@@ -1,4 +1,5 @@
 import { Scholarship, ScholarshipSearchResult, ScholarshipFilterFacets, ScholarshipMatch } from '../types';
+import { captureException } from '../utils/sentry';
 
 /**
  * Base URL for the API.
@@ -40,9 +41,33 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
+/**
+ * Reports an API failure worth investigating.
+ *
+ * Deliberately narrow. A 401 is a normal expired session, a 400 is a form the user still
+ * has to fix, and a 429 is the limiter working — forwarding those would bury real faults.
+ * What is reported: server faults (5xx), and the transport failures (timeout, unreachable)
+ * that indicate the API is down or the deployment's API URL is wrong.
+ *
+ * The endpoint and status go with the event; the request body never does, since it can
+ * hold credentials, CV text or SOP drafts.
+ */
+function reportApiFailure(error: ApiError, endpoint: string, method: string) {
+  const worthReporting = error.status >= 500 || error.status === 0 || error.status === 408;
+  if (!worthReporting) return;
+
+  captureException(error, {
+    area: 'api',
+    level: error.status >= 500 ? 'error' : 'warning',
+    // Strip the query string: it can carry a search term or a scholarship id.
+    extra: { endpoint: endpoint.split('?')[0], method, status: error.status },
+  });
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('token');
   const headers: Record<string, string> = { ...((options.headers as Record<string, string>) || {}) };
+  const method = (options.method || 'GET').toUpperCase();
 
   if (token) headers['Authorization'] = `Bearer ${token}`;
   // Let the browser set the multipart boundary for FormData bodies.
@@ -57,10 +82,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers, signal: controller.signal });
   } catch (err: any) {
     clearTimeout(timeout);
-    if (err?.name === 'AbortError') {
-      throw new ApiError('The request timed out. Please check your connection and try again.', 408);
-    }
-    throw new ApiError('Cannot reach the server. Please check your connection and try again.', 0);
+    const apiError =
+      err?.name === 'AbortError'
+        ? new ApiError('The request timed out. Please check your connection and try again.', 408)
+        : new ApiError('Cannot reach the server. Please check your connection and try again.', 0);
+    reportApiFailure(apiError, endpoint, method);
+    throw apiError;
   } finally {
     clearTimeout(timeout);
   }
@@ -78,11 +105,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     if (response.status === 401) onUnauthorized?.();
-    throw new ApiError(
+    const apiError = new ApiError(
       data.error || data.message || `Request failed (${response.status})`,
       response.status,
       data.details
     );
+    reportApiFailure(apiError, endpoint, method);
+    throw apiError;
   }
 
   return data as T;

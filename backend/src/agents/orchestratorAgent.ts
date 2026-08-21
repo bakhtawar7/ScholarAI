@@ -5,6 +5,7 @@ import { ProfileService } from '../services/profileService';
 import { logger } from '../utils/logger';
 import { parseSearchIntent } from '../utils/searchIntentParser';
 import { llm as openai, llmErrorMeta, extractContent } from '../utils/llmClient';
+import { captureException } from '../utils/sentry';
 
 /** Model-call ceilings. Without these a single chat turn has unbounded token cost. */
 const MAX_HISTORY_MESSAGES = 20;
@@ -250,6 +251,14 @@ Core Instructions:
           userId,
           conversationId,
           ...llmErrorMeta(openAiErr),
+        });
+        // The user still gets an answer from the deterministic engine, so nothing
+        // surfaces as an error — this capture is the only signal that the model path
+        // is down. Message content is deliberately not attached.
+        captureException(openAiErr, {
+          area: 'ai',
+          userId,
+          extra: { stage: 'chat-orchestration', conversationId, ...llmErrorMeta(openAiErr) },
         });
       }
     }

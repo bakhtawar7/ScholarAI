@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { logger } from '../utils/logger';
 import { config } from '../config';
+import { captureException } from '../utils/sentry';
 
 /** Prisma error codes we can map to a meaningful HTTP status. */
 const PRISMA_STATUS: Record<string, { status: number; message: string }> = {
@@ -9,6 +10,16 @@ const PRISMA_STATUS: Record<string, { status: number; message: string }> = {
   P2003: { status: 400, message: 'Referenced record does not exist.' },
   P2025: { status: 404, message: 'Record not found.' },
 };
+
+/**
+ * Prisma tags its own error classes, so a database fault can be told apart from an
+ * application bug without importing the client here. `P####` covers the known request
+ * errors; the class name catches initialisation, panic and validation failures.
+ */
+function isDatabaseError(err: any): boolean {
+  if (typeof err?.code === 'string' && /^P\d{4}$/.test(err.code)) return true;
+  return typeof err?.name === 'string' && err.name.startsWith('Prisma');
+}
 
 export const errorHandler = (err: any, req: Request, res: Response, _next: NextFunction) => {
   // Zod failures that escaped validateRequest (e.g. schema.parse inside a controller)
@@ -44,6 +55,29 @@ export const errorHandler = (err: any, req: Request, res: Response, _next: NextF
     logger.error('Unhandled server error', { ...logMeta, stack: err?.stack });
   } else {
     logger.warn('Request rejected', logMeta);
+  }
+
+  /**
+   * Report server faults only.
+   *
+   * 4xx responses are the API working as designed — a validation failure or a wrong
+   * password is not an incident, and forwarding them would bury real faults. The route
+   * and status go with the event; the request body never does (it can hold credentials,
+   * CV text or SOP drafts), which `scrubEvent` enforces independently.
+   */
+  if (status >= 500) {
+    captureException(err, {
+      area: isDatabaseError(err) ? 'database' : 'api',
+      userId: (req as any).user?.id,
+      level: 'error',
+      extra: {
+        method: req.method,
+        route: req.route?.path || req.originalUrl.split('?')[0],
+        status,
+        code: err?.code,
+        requestId: (req as any).requestId,
+      },
+    });
   }
 
   res.status(status).json({

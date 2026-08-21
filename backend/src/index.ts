@@ -1,3 +1,6 @@
+// Must stay first: Sentry patches http, express and Prisma at import time.
+import './instrument';
+
 import express from 'express';
 import cors from 'cors';
 import { config, isUsingInsecureJwtSecret } from './config';
@@ -7,6 +10,9 @@ import { globalRateLimiter } from './middleware/rateLimiter';
 import { logger } from './utils/logger';
 import { prisma, disconnectPrisma } from './utils/prisma';
 import { describeLlm } from './utils/llmClient';
+import { captureException, flushSentry, isSentryEnabled } from './utils/sentry';
+import { EmailService } from './services/emailService';
+import { mountApiDocs } from './docs';
 import { startScheduler, stopScheduler } from './automation/scheduler';
 
 import authRoutes from './routes/authRoutes';
@@ -55,6 +61,10 @@ app.use(
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '256kb' }));
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
+// Mounted before the API rate limiter: the reference page pulls several static assets,
+// and loading the docs should not eat into a developer's request budget for real calls.
+mountApiDocs(app);
+
 app.use('/api', globalRateLimiter);
 
 /** Liveness — no dependencies touched, safe for aggressive probing. */
@@ -75,6 +85,8 @@ app.get('/api/health/ready', async (_req, res) => {
     res.status(200).json({ status: 'ready', database: 'connected', timestamp: new Date().toISOString() });
   } catch (err: any) {
     logger.error('Readiness probe failed', { message: err?.message });
+    // A failing readiness probe is the earliest signal of a database outage.
+    captureException(err, { area: 'database', extra: { probe: 'readiness' }, level: 'error' });
     res.status(503).json({ status: 'unavailable', database: 'disconnected' });
   }
 });
@@ -107,11 +119,21 @@ if (require.main === module) {
   if (config.adminEmails.length === 0) {
     logger.warn('ADMIN_EMAILS is unset — no account can reach admin-only catalogue/automation routes.');
   }
+  // Same reasoning for outbound mail and error reporting: silence here is ambiguous, so
+  // state which transport is live rather than letting a missing key look like success.
+  logger.info(`Email: ${EmailService.describeTransport()}`);
+  if (!EmailService.isConfigured()) {
+    logger.warn('No email transport configured — transactional emails are logged, not sent.');
+  }
+  if (!isSentryEnabled()) {
+    logger.warn('SENTRY_DSN is unset — errors are logged locally only.');
+  }
 
   const server = app.listen(config.port, () => {
     logger.info(`AI Scholarship Copilot API listening on port ${config.port}`, {
       environment: config.nodeEnv,
       automation: config.automationEnabled,
+      docs: config.docsEnabled ? '/api/docs' : 'disabled',
     });
     if (config.automationEnabled) startScheduler();
   });
@@ -120,6 +142,8 @@ if (require.main === module) {
     logger.info(`Received ${signal} — shutting down gracefully`);
     stopScheduler();
     server.close(async () => {
+      // Flush before disconnecting: buffered events are lost once the process exits.
+      await flushSentry();
       await disconnectPrisma();
       logger.info('Shutdown complete');
       process.exit(0);
@@ -132,10 +156,13 @@ if (require.main === module) {
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('unhandledRejection', (reason) => {
     logger.error('Unhandled promise rejection', { reason: String(reason) });
+    captureException(reason, { area: 'process', extra: { kind: 'unhandledRejection' }, level: 'error' });
   });
   process.on('uncaughtException', (err) => {
     logger.error('Uncaught exception — exiting', { message: err.message, stack: err.stack });
-    process.exit(1);
+    captureException(err, { area: 'process', extra: { kind: 'uncaughtException' }, level: 'fatal' });
+    // Give Sentry a moment to deliver the report, but exit either way.
+    void flushSentry(1500).finally(() => process.exit(1));
   });
 }
 

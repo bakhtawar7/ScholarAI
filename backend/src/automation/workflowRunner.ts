@@ -1,6 +1,7 @@
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
 import { safeJsonStringify } from '../utils/jsonHelper';
+import { captureException } from '../utils/sentry';
 import { getWorkflow, WorkflowDefinition, WorkflowMetrics } from './workflowRegistry';
 
 export type TriggerType = 'SCHEDULE' | 'MANUAL' | 'STARTUP';
@@ -149,6 +150,14 @@ export async function runWorkflow(workflowKey: string, options: RunOptions = {})
     logger.error(`Workflow "${definition.key}" failed after ${attempt} attempt(s)`, {
       message: lastError?.message,
       trigger,
+    });
+
+    // Background failures have no client to surface to — without this a workflow can be
+    // failing every run and the only trace is a server log line.
+    captureException(lastError, {
+      area: 'automation',
+      level: 'error',
+      extra: { workflowKey: definition.key, workflowName: definition.name, trigger, attempts: attempt, runId: run.id },
     });
 
     return {

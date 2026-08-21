@@ -1,5 +1,6 @@
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
+import { captureException } from '../utils/sentry';
 
 export interface CreateNotificationInput {
   userId: string;
@@ -95,6 +96,11 @@ export class NotificationService {
     } catch (err: any) {
       if (err?.code === 'P2002') return null; // already sent
       logger.error('Failed to create notification', { dedupeKey: input.dedupeKey, message: err?.message });
+      captureException(err, {
+        area: 'database',
+        userId: input.userId,
+        extra: { stage: 'create-notification', type: input.type, code: err?.code },
+      });
       throw err;
     }
   }

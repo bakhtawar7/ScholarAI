@@ -1,5 +1,6 @@
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
+import { captureException, captureMessage } from '../../utils/sentry';
 
 /**
  * Provider-agnostic external web search.
@@ -405,14 +406,29 @@ export async function externalSearch(
         status: err?.status,
         message: err?.message,
       });
+      // Reported per provider: a chain that silently falls through to the keyless
+      // fallback still looks "successful" from the outside, so the failure of a keyed
+      // provider (expired key, exhausted quota) is only visible here.
+      captureException(err, {
+        area: 'external-search',
+        level: 'warning',
+        extra: { provider: provider.name, status: err?.status, detail },
+      });
     }
   }
+
+  const allFailed = `Every search provider failed — ${failures.join('; ')}.`;
+  captureMessage('All external scholarship search providers failed', {
+    area: 'external-search',
+    level: 'error',
+    extra: { providers: chain.map((p) => p.name), failures: failures.slice(0, 10) },
+  });
 
   return {
     hits: [],
     queriesIssued: queries,
     provider: chain.map((p) => p.name).join(' → '),
     external: false,
-    error: `Every search provider failed — ${failures.join('; ')}.`,
+    error: allFailed,
   };
 }

@@ -2,6 +2,7 @@ import net from 'net';
 import tls from 'tls';
 import { config } from '../config';
 import { logger } from '../utils/logger';
+import { captureException } from '../utils/sentry';
 
 export interface OutboundMessage {
   to: string;
@@ -225,6 +226,11 @@ export async function deliverMessages(messages: OutboundMessage[]): Promise<Deli
       }
     } catch (err: any) {
       logger.error('Resend transport unavailable', { message: err?.message });
+      captureException(err, {
+        area: 'email',
+        level: 'error',
+        extra: { transport: 'resend', stage: 'transport-init', batchSize: messages.length },
+      });
       if (!config.smtp.host) {
         return {
           delivered: 0,
@@ -278,6 +284,11 @@ export async function deliverMessages(messages: OutboundMessage[]): Promise<Deli
     failed = messages.length;
     errors.push(`SMTP connection failed: ${err.message}`);
     logger.error('SMTP connection failed — notifications not delivered', { host: config.smtp.host, message: err.message });
+    captureException(err, {
+      area: 'email',
+      level: 'error',
+      extra: { transport: 'smtp', stage: 'connect', host: config.smtp.host, port: config.smtp.port, batchSize: messages.length },
+    });
   } finally {
     await transport.quit();
   }

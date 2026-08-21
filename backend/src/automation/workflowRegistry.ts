@@ -8,6 +8,7 @@ import { CVAnalysisService } from '../services/cvAnalysisService';
 import { NotificationService } from '../services/notificationService';
 import { ScholarshipService } from '../services/scholarshipService';
 import { deliverMessages, isDeliveryConfigured } from '../services/deliveryService';
+import { EmailService } from '../services/emailService';
 import { config } from '../config';
 
 /** Anything a handler returns is persisted as the run's metrics blob. */
@@ -33,6 +34,21 @@ export interface WorkflowDefinition {
   /** Skip on boot; used for workflows that only make sense on demand. */
   manualOnly?: boolean;
   handler: (ctx: WorkflowContext) => Promise<WorkflowMetrics>;
+}
+
+/**
+ * Recovers the scholarship id a notification is about.
+ *
+ * `dedupeKey` is built by the producers as `<KIND>:<userId>:<scholarshipId>[:…]`
+ * (see DeadlineAutomationService and the new-match workflow), so the id is already
+ * carried on the row and needs no extra column. Returns null for kinds that do not
+ * reference a scholarship — application reminders key on the application id instead.
+ */
+function scholarshipIdFromDedupeKey(dedupeKey: string | null): string | null {
+  if (!dedupeKey) return null;
+  const [kind, , third] = dedupeKey.split(':');
+  if (!third) return null;
+  return kind === 'DEADLINE' || kind === 'NEW_MATCH' ? third : null;
 }
 
 /** Normalises whatever a discovery source hands us into a Scholarship row shape. */
@@ -607,7 +623,9 @@ export const WORKFLOWS: WorkflowDefinition[] = [
 
       const pending = await prisma.notification.findMany({
         where: { dispatchedAt: null },
-        include: { user: { select: { id: true, email: true } } },
+        include: {
+          user: { select: { id: true, email: true, profile: { select: { fullName: true } } } },
+        },
         orderBy: { createdAt: 'asc' },
         take: batchSize,
       });
@@ -628,10 +646,124 @@ export const WORKFLOWS: WorkflowDefinition[] = [
 
       ctx.log(`Claimed ${ids.length} notification(s) for dispatch`);
 
-      // Actually deliver. Without SMTP configured this logs and reports channel 'log',
-      // so the run record never implies delivery that did not happen.
       const appUrl = config.frontendUrl.replace(/\/+$/, '');
-      const messages = pending.map((n) => ({
+
+      /**
+       * Two delivery paths.
+       *
+       * Deadline and new-match notifications have a dedicated branded ScholarAI template
+       * (subject line, HTML layout, official-page link), so they go through EmailService.
+       * Everything else keeps the existing generic plain-text path. A notification is
+       * only ever sent down one of the two, so nothing is double-delivered.
+       */
+      const templated: Array<{ notification: (typeof pending)[number]; scholarshipId: string }> = [];
+      const generic: typeof pending = [];
+
+      for (const n of pending) {
+        const scholarshipId =
+          n.type === 'DEADLINE' || n.type === 'NEW_MATCH' ? scholarshipIdFromDedupeKey(n.dedupeKey) : null;
+        if (scholarshipId && n.user?.email) templated.push({ notification: n, scholarshipId });
+        else generic.push(n);
+      }
+
+      const failedIds: string[] = [];
+      let templatedSent = 0;
+      let templatedFailed = 0;
+
+      if (templated.length > 0) {
+        // Two batched reads rather than a query per notification.
+        const scholarshipIds = [...new Set(templated.map((t) => t.scholarshipId))];
+        const userIds = [...new Set(templated.map((t) => t.notification.userId))];
+
+        const [scholarships, matches] = await Promise.all([
+          prisma.scholarship.findMany({
+            where: { id: { in: scholarshipIds } },
+            select: { id: true, title: true, hostCountry: true, deadline: true, officialUrl: true },
+          }),
+          prisma.scholarshipMatch.findMany({
+            where: { scholarshipId: { in: scholarshipIds }, profile: { userId: { in: userIds } } },
+            select: { scholarshipId: true, matchPercentage: true, profile: { select: { userId: true } } },
+          }),
+        ]);
+
+        const scholarshipById = new Map(scholarships.map((s) => [s.id, s]));
+        const matchByUserScholarship = new Map(
+          matches.map((m) => [`${m.profile.userId}:${m.scholarshipId}`, m.matchPercentage])
+        );
+
+        for (const { notification, scholarshipId } of templated) {
+          const scholarship = scholarshipById.get(scholarshipId);
+          // The scholarship was deleted between notification and dispatch — fall back to
+          // the generic message rather than dropping the notification.
+          if (!scholarship) {
+            generic.push(notification);
+            continue;
+          }
+
+          const fullName = notification.user.profile?.fullName ?? undefined;
+          const to = notification.user.email;
+
+          let result;
+          if (notification.type === 'NEW_MATCH') {
+            result = await EmailService.sendScholarshipMatch(
+              to,
+              {
+                fullName,
+                scholarships: [
+                  {
+                    title: scholarship.title,
+                    hostCountry: scholarship.hostCountry,
+                    matchScore: matchByUserScholarship.get(`${notification.userId}:${scholarshipId}`) ?? undefined,
+                    deadline: scholarship.deadline,
+                    officialUrl: scholarship.officialUrl,
+                  },
+                ],
+                appUrl: `${appUrl}${notification.link || '/recommendations'}`,
+              },
+              notification.userId
+            );
+          } else {
+            // A closed deadline is not a "days remaining" reminder — send the generic
+            // notice for those instead of a template that would read as negative days.
+            const deadline = scholarship.deadline;
+            const daysRemaining = deadline
+              ? Math.ceil((new Date(deadline).getTime() - dispatchedAt.getTime()) / 86_400_000)
+              : -1;
+
+            if (daysRemaining < 0) {
+              generic.push(notification);
+              continue;
+            }
+
+            result = await EmailService.sendDeadlineReminder(
+              to,
+              {
+                fullName,
+                scholarshipTitle: scholarship.title,
+                deadline: deadline!,
+                daysRemaining,
+                officialUrl: scholarship.officialUrl,
+                appUrl: `${appUrl}${notification.link || '/applications'}`,
+              },
+              notification.userId
+            );
+          }
+
+          if (result.sent) {
+            templatedSent++;
+          } else if (result.channel === 'log') {
+            // No transport configured: nothing was attempted, so this is not a failure
+            // to retry. Matches the generic path's 'log' semantics.
+          } else {
+            templatedFailed++;
+            failedIds.push(notification.id);
+          }
+        }
+      }
+
+      // Generic plain-text path, unchanged. Without a transport configured this logs and
+      // reports channel 'log', so the run record never implies delivery that did not happen.
+      const messages = generic.map((n) => ({
         to: n.user.email,
         subject: n.title,
         text: [
@@ -640,21 +772,28 @@ export const WORKFLOWS: WorkflowDefinition[] = [
           n.link ? `Open in the app: ${appUrl}${n.link}` : `Open the app: ${appUrl}`,
           '',
           '---',
-          'AI Scholarship Copilot — automated notification.',
+          'ScholarAI — automated notification.',
           'Match scores and eligibility assessments are advisory estimates; verify all requirements with the awarding institution.',
         ].join('\n'),
       }));
 
-      const delivery = await deliverMessages(messages);
+      const delivery = messages.length
+        ? await deliverMessages(messages)
+        : { delivered: 0, failed: 0, channel: 'log' as const, errors: [] as string[] };
 
-      // Re-open anything the transport rejected so a later run can retry it, rather
-      // than silently losing the notification.
-      if (delivery.failed > 0 && delivery.channel === 'smtp' && delivery.delivered === 0) {
+      // Re-open anything a configured transport rejected so a later run can retry it,
+      // rather than silently losing the notification. Log-only mode never releases —
+      // nothing was attempted, and releasing would re-claim the same rows forever.
+      if (delivery.failed > 0 && delivery.channel !== 'log' && delivery.delivered === 0) {
+        failedIds.push(...generic.map((n) => n.id));
+      }
+
+      if (failedIds.length > 0) {
         await prisma.notification.updateMany({
-          where: { id: { in: ids } },
+          where: { id: { in: failedIds } },
           data: { dispatchedAt: null },
         });
-        ctx.log('All deliveries failed — released the claim so the next run retries');
+        ctx.log(`Released ${failedIds.length} failed notification(s) so the next run retries`);
       }
 
       return {
@@ -662,8 +801,12 @@ export const WORKFLOWS: WorkflowDefinition[] = [
         claimed: ids.length,
         deliveryChannel: delivery.channel,
         deliveryConfigured: isDeliveryConfigured(),
-        delivered: delivery.delivered,
-        failed: delivery.failed,
+        delivered: delivery.delivered + templatedSent,
+        failed: delivery.failed + templatedFailed,
+        templatedDelivered: templatedSent,
+        templatedFailed,
+        genericDelivered: delivery.delivered,
+        released: failedIds.length,
         dispatchedAt: dispatchedAt.toISOString(),
         errors: delivery.errors,
         recipients: pending.slice(0, 25).map((n) => ({ userId: n.userId, type: n.type, title: n.title })),

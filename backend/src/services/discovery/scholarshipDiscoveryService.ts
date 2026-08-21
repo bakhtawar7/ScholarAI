@@ -3,6 +3,7 @@ import { logger } from '../../utils/logger';
 import { config } from '../../config';
 import { safeJsonStringify } from '../../utils/jsonHelper';
 import { llm, llmErrorMeta } from '../../utils/llmClient';
+import { captureException } from '../../utils/sentry';
 import { parseSearchIntent, ParsedSearchIntent } from '../../utils/searchIntentParser';
 import { checkUrlReachable } from '../../utils/urlChecker';
 import { externalSearch, describeSearchProvider, resolveProvider, SearchHit } from './searchProvider';
@@ -261,6 +262,9 @@ async function extractScholarships(hits: SearchHit[], intent: ParsedSearchIntent
     return Array.isArray(parsed?.scholarships) ? parsed.scholarships : [];
   } catch (err: any) {
     logger.error('Scholarship extraction failed', llmErrorMeta(err));
+    // Returning [] degrades discovery to "no results found", which is indistinguishable
+    // from a genuinely empty search — so the model failure has to be reported here.
+    captureException(err, { area: 'ai', extra: { stage: 'scholarship-extraction', ...llmErrorMeta(err) } });
     return [];
   }
 }
@@ -545,6 +549,10 @@ export class ScholarshipDiscoveryService {
           });
         } catch (err: any) {
           logger.error('Failed to persist discovered scholarship', { title: record.title, message: err?.message });
+          captureException(err, {
+            area: 'database',
+            extra: { stage: 'persist-discovered-scholarship', code: err?.code },
+          });
         }
       }
 

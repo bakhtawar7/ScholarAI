@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { captureException } from '../../utils/sentry';
 
 interface Props {
   children: React.ReactNode;
@@ -29,6 +30,18 @@ export class ErrorBoundary extends React.Component<Props, State> {
     // Kept as console.error deliberately: this is the last stop before a blank screen,
     // and in production it is the only signal an operator has.
     console.error('Render error caught by ErrorBoundary:', error, info.componentStack);
+
+    // The component stack names the components that failed, which is what makes a
+    // render crash diagnosable. It carries no props or state, so no user data.
+    captureException(error, {
+      area: 'render',
+      level: 'error',
+      extra: {
+        section: this.props.section,
+        componentStack: info.componentStack?.slice(0, 4000),
+        route: window.location.pathname,
+      },
+    });
   }
 
   private reset = () => this.setState({ error: null });
