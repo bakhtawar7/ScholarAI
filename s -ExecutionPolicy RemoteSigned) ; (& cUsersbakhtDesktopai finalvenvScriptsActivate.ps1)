@@ -1,0 +1,32 @@
+[33m0b2c850[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Update project
+ .env.example                                       |  54 [32m++[m
+ backend/.env.example                               |  51 [32m+[m[31m-[m
+ backend/src/agents/orchestratorAgent.ts            |   9 [32m+[m
+ backend/src/automation/workflowRegistry.ts         | 169 [32m+++[m[31m-[m
+ backend/src/automation/workflowRunner.ts           |   9 [32m+[m
+ backend/src/docs/components.ts                     | 982 [32m+++++++++++++++++++++[m
+ backend/src/docs/index.ts                          |  81 [32m++[m
+ backend/src/docs/openapi.ts                        | 116 [32m+++[m
+ backend/src/docs/paths/applications.ts             | 348 [32m++++++++[m
+ backend/src/docs/paths/auth.ts                     | 125 [32m+++[m
+ backend/src/docs/paths/automation.ts               | 186 [32m++++[m
+ backend/src/docs/paths/chat.ts                     | 159 [32m++++[m
+ backend/src/docs/paths/documents.ts                | 315 [32m+++++++[m
+ backend/src/docs/paths/scholarships.ts             | 464 [32m++++++++++[m
+ backend/src/docs/paths/system.ts                   |  36 [32m+[m
+ backend/src/index.ts                               |  29 [32m+[m[31m-[m
+ backend/src/instrument.ts                          |  13 [32m+[m
+ backend/src/middleware/errorHandler.ts             |  34 [32m+[m
+ backend/src/services/deliveryService.ts            |  11 [32m+[m
+ .../discovery/scholarshipDiscoveryService.ts       |   8 [32m+[m
+ backend/src/services/discovery/searchProvider.ts   |  18 [32m+[m[31m-[m
+ backend/src/services/notificationService.ts        |   6 [32m+[m
+ backend/src/utils/sentry.ts                        |  60 [32m+[m[31m-[m
+ frontend/src/components/common/ErrorBoundary.tsx   |  13 [32m+[m
+ frontend/src/main.tsx                              |   5 [32m+[m
+ frontend/src/services/api.ts                       |  39 [32m+[m[31m-[m
+ frontend/src/utils/sentry.ts                       | 157 [32m++++[m
+ frontend/src/vite-env.d.ts                         |  10 [32m+[m
+ package-lock.json                                  | 128 [32m+++[m
+ package.json                                       |   5 [32m+[m
+ 30 files changed, 3613 insertions(+), 27 deletions(-)
