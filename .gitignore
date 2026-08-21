@@ -1,0 +1,65 @@
+# ---- Secrets ----
+# Never commit real credentials. Only .env.example belongs in git.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Dependencies ----
+node_modules/
+.npm/
+.pnpm-store/
+
+# ---- Build output ----
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# ---- Database (local SQLite) ----
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.bak
+*.sqlite
+*.sqlite3
+
+# ---- Logs ----
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Test / coverage ----
+coverage/
+.nyc_output/
+
+# ---- Uploads (user documents: CVs, transcripts) ----
+uploads/
+tmp/
+temp/
+
+# ---- Editor / OS ----
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Caches ----
+.cache/
+.eslintcache
+.vite/
+.turbo/
+
+# ---- Sentry ----
+# Auth token for source-map upload must never be committed.
+.sentryclirc
+.env.sentry-build-plugin

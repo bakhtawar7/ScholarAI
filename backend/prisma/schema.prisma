@@ -1,0 +1,341 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  passwordHash  String
+  role          String          @default("STUDENT")
+  isVerified    Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  profile       StudentProfile?
+  saved         SavedScholarship[]
+  applications  Application[]
+  conversations ChatConversation[]
+  cvAnalyses    CVAnalysis[]
+  sopSessions   SOPSession[]
+  notifications Notification[]
+  reminders     Reminder[]
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model StudentProfile {
+  id                    String        @id @default(uuid())
+  userId                String        @unique
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName              String
+  countryOfResidence    String
+  nationality           String
+  currentDegreeLevel    String
+  currentDegreeName     String
+  fieldOfStudy          String
+  university            String
+  gpa                   Float
+  maxGpa                Float         @default(4.0)
+  graduationYear        Int
+  targetDegreeLevel     String
+  targetCountries       String        @default("[]") // JSON string array
+  preferredFields       String        @default("[]") // JSON string array
+  languageTests         String        @default("{}") // JSON object string
+  financialPreference   String?
+  scholarshipPreference String?
+  skills                String        @default("[]") // JSON string array
+  workExperienceYears   Float         @default(0)
+  researchExperience    String?
+  cvUrl                 String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  matches               ScholarshipMatch[]
+
+  @@index([targetDegreeLevel])
+  @@index([fieldOfStudy])
+}
+
+model Scholarship {
+  id                    String              @id @default(uuid())
+  title                 String
+  provider              String
+  university            String?
+  organization          String?
+  hostCountry           String
+  degreeLevels          String              @default("[\"MASTERS\"]") // JSON string array
+  fieldsOfStudy         String              @default("[\"Computer Science\"]") // JSON string array
+  fundingType           String              @default("FULL_FUNDING")
+  tuitionCoverage       String?
+  stipendAmount         String?
+  travelAllowance       Boolean             @default(false)
+  accommodationCoverage Boolean             @default(false)
+  accommodationDetails  String?
+  minGpa                Float?
+  maxGpaScale           Float               @default(4.0)
+  gpaRequirements       String?
+  eligibleNationalities String              @default("[]") // JSON string array
+  nationalityRequirements String?
+  languageRequirements  String              @default("{}") // JSON object string
+  eligibilityDescription String?
+  requiredDocuments     String              @default("[]") // JSON string array
+  applicationProcess    String
+  deadline              DateTime?
+  officialUrl           String
+  sourceUrl             String?
+  verificationStatus    String              @default("VERIFIED")
+  verificationConfidence Float              @default(1.0)
+  verificationReport    String?             // JSON string storing field audits
+  lastVerifiedAt        DateTime            @default(now())
+  isDemo                Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  matches               ScholarshipMatch[]
+  savedBy               SavedScholarship[]
+  applications          Application[]
+  sources               ScholarshipSource[]
+  verifications         ScholarshipVerification[]
+
+  @@index([hostCountry])
+  @@index([fundingType])
+  @@index([verificationStatus])
+  @@index([deadline])
+  @@index([isDemo])
+  @@index([createdAt])
+  @@index([title])
+  @@index([provider])
+  @@index([officialUrl])
+  @@index([sourceUrl])
+  @@index([lastVerifiedAt])
+  // Duplicate prevention: the same programme from the same provider is one record.
+  // Discovery ingestion resolves against this pair before falling back to URL matching.
+  @@unique([title, provider])
+}
+
+model ScholarshipSource {
+  id            String      @id @default(uuid())
+  scholarshipId String
+  scholarship   Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  sourceName    String
+  rawPayload    String?     // JSON string
+  fetchedAt     DateTime    @default(now())
+
+  @@index([scholarshipId])
+  @@index([fetchedAt])
+}
+
+model ScholarshipVerification {
+  id                String      @id @default(uuid())
+  scholarshipId     String
+  scholarship       Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  status            String      // VERIFIED, PARTIALLY_VERIFIED, NEEDS_REVIEW, REJECTED, PENDING_VERIFICATION
+  overallConfidence Float       @default(1.0)
+  verifiedBy        String      @default("AI_VERIFICATION_AGENT")
+  fieldAudits       String?     // JSON string storing per-field audit details
+  deadlineValid     Boolean     @default(true)
+  urlReachable      Boolean     @default(true)
+  notes             String?
+  verifiedAt        DateTime    @default(now())
+
+  @@index([scholarshipId])
+  @@index([status])
+  @@index([verifiedAt])
+}
+
+model ScholarshipMatch {
+  id                String         @id @default(uuid())
+  profileId         String
+  profile           StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  scholarshipId     String
+  scholarship       Scholarship    @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  matchPercentage   Float
+  eligibility       String         // "ELIGIBLE", "POTENTIALLY_ELIGIBLE", "NOT_ELIGIBLE", "INSUFFICIENT_INFORMATION"
+  matchingCriteria  String         @default("[]") // JSON string array
+  missingCriteria   String         @default("[]") // JSON string array
+  uncertainCriteria String         @default("[]") // JSON string array
+  warnings          String         @default("[]") // JSON string array
+  recommendations   String         @default("[]") // JSON string array
+  breakdown         String         @default("{}") // JSON object string
+  matchReasons      String         @default("[]") // JSON string array (legacy alias)
+  missingReqs       String         @default("[]") // JSON string array (legacy alias)
+  concerns          String         @default("[]") // JSON string array (legacy alias)
+  nextSteps         String         @default("[]") // JSON string array (legacy alias)
+  profileHash       String?
+  calculatedAt      DateTime       @default(now())
+
+  @@unique([profileId, scholarshipId])
+  @@index([scholarshipId])
+  @@index([matchPercentage])
+  @@index([eligibility])
+  @@index([calculatedAt])
+}
+
+model SavedScholarship {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scholarshipId String
+  scholarship   Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, scholarshipId])
+  @@index([scholarshipId])
+  @@index([userId, createdAt])
+}
+
+model Application {
+  id             String               @id @default(uuid())
+  userId         String
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scholarshipId  String
+  scholarship    Scholarship          @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+  status         String               @default("INTERESTED")
+  notes          String?
+  submissionDate DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  checklists     ApplicationChecklist[]
+
+  @@unique([userId, scholarshipId])
+  @@index([scholarshipId])
+  @@index([status])
+  @@index([userId, updatedAt])
+}
+
+model ApplicationChecklist {
+  id            String      @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  item          String
+  isCompleted   Boolean     @default(false)
+  dueDate       DateTime?
+
+  // One checklist entry per label per application — blocks duplicate template population.
+  @@unique([applicationId, item])
+  @@index([applicationId])
+  @@index([isCompleted])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   // DEADLINE, NEW_MATCH, UPDATE, APPLICATION_REMINDER
+  isRead    Boolean  @default(false)
+  link      String?
+  // Stable idempotency key (e.g. "DEADLINE:<scholarshipId>:7D:<userId>").
+  // A unique index makes duplicate suppression atomic instead of read-then-write.
+  dedupeKey String?  @unique
+  // Set once an outbound channel has picked the notification up, so the dispatch
+  // workflow never returns the same row twice.
+  dispatchedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@index([isRead, dispatchedAt])
+}
+
+model Reminder {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  dueDate       DateTime
+  daysBefore    Int
+  isSent        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, title, dueDate])
+  @@index([userId])
+  @@index([isSent, dueDate])
+}
+
+model ChatConversation {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String        @default("New Conversation")
+  createdAt DateTime      @default(now())
+  messages  ChatMessage[]
+
+  @@index([userId, createdAt])
+}
+
+model ChatMessage {
+  id             String           @id @default(uuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String           // "USER", "ASSISTANT", "SYSTEM"
+  content        String
+  toolCalls      String?          // JSON string
+  toolResults    String?          // JSON string
+  createdAt      DateTime         @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model CVAnalysis {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cvText      String
+  skillsFound String   @default("[]") // JSON string array
+  strengths   String   @default("[]") // JSON string array
+  weaknesses  String   @default("[]") // JSON string array
+  suggestions String   @default("[]") // JSON string array
+  score       Float
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model SOPSession {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetScholarship  String?
+  draftText          String
+  feedback           String?  // JSON string
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+/// Execution ledger for the in-app automation engine (replaces n8n execution history).
+/// Every scheduled or manual workflow run writes exactly one row, so failures,
+/// durations and retry counts are durable and queryable.
+model WorkflowRun {
+  id           String    @id @default(uuid())
+  workflowKey  String
+  workflowName String
+  // SCHEDULE | MANUAL | STARTUP
+  trigger      String    @default("SCHEDULE")
+  // RUNNING | SUCCESS | FAILED | SKIPPED
+  status       String    @default("RUNNING")
+  attempt      Int       @default(1)
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  durationMs   Int?
+  // JSON metrics returned by the workflow handler
+  metrics      String?
+  errorMessage String?
+  errorStack   String?
+  triggeredBy  String?
+  // Guards against two schedulers (or a manual + scheduled run) executing the
+  // same logical occurrence concurrently.
+  lockKey      String?   @unique
+
+  @@index([workflowKey, startedAt])
+  @@index([status])
+  @@index([startedAt])
+}
