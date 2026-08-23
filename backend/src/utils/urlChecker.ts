@@ -47,6 +47,96 @@ function isDisallowedHost(hostname: string): boolean {
   return false;
 }
 
+/** Redirect statuses that carry a Location header. */
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+interface GuardedResponse {
+  response: Response;
+  /** Last URL actually requested. */
+  finalUrl: string;
+  /** Set when a hop was refused, so the caller can report why rather than silently stopping. */
+  blockedReason?: string;
+}
+
+/**
+ * Fetches a URL, re-validating the host on every redirect hop.
+ *
+ * `redirect: 'follow'` was an SSRF hole: only the *initial* hostname was checked against
+ * isDisallowedHost, so an attacker-controlled scholarship URL on a public host could 302
+ * to 169.254.169.254 or 127.0.0.1 and the redirect was chased from inside the network,
+ * defeating the guard above entirely. MAX_REDIRECTS was declared for this and never wired
+ * up. Redirects are now followed manually so each hop passes the same scheme and host
+ * checks, and the chain is bounded.
+ */
+async function fetchGuarded(startUrl: URL, method: 'HEAD' | 'GET'): Promise<GuardedResponse> {
+  let current = startUrl;
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(current.toString(), {
+        method,
+        // Manual, so every hop is re-validated rather than followed blindly.
+        redirect: 'manual',
+        signal: controller.signal,
+        headers: {
+          // Some portals serve 403 to unknown agents.
+          'User-Agent': 'AI-Scholarship-Copilot/1.0 (link verification)',
+          Accept: '*/*',
+          ...(method === 'GET' ? { Range: 'bytes=0-2047' } : {}),
+        },
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!REDIRECT_STATUSES.has(response.status)) {
+      return { response, finalUrl: current.toString() };
+    }
+
+    const location = response.headers.get('location');
+    if (!location) {
+      // A 3xx with no Location cannot be followed; report it as the final answer.
+      return { response, finalUrl: current.toString() };
+    }
+
+    let next: URL;
+    try {
+      // Relative Location values are legal and common.
+      next = new URL(location, current);
+    } catch {
+      return { response, finalUrl: current.toString(), blockedReason: 'redirected to a malformed URL' };
+    }
+
+    if (next.protocol !== 'https:' && next.protocol !== 'http:') {
+      return {
+        response,
+        finalUrl: current.toString(),
+        blockedReason: `redirected to unsupported scheme "${next.protocol}"`,
+      };
+    }
+
+    if (isDisallowedHost(next.hostname)) {
+      logger.warn('Blocked a redirect to a private/internal host during URL check', {
+        from: current.hostname,
+        to: next.hostname,
+      });
+      return {
+        response,
+        finalUrl: current.toString(),
+        blockedReason: `redirected to a private or internal host (${next.hostname})`,
+      };
+    }
+
+    current = next;
+  }
+
+  throw Object.assign(new Error(`Exceeded ${MAX_REDIRECTS} redirects`), { code: 'TOO_MANY_REDIRECTS' });
+}
+
 /**
  * Checks whether a scholarship's official URL actually resolves.
  *
@@ -62,7 +152,12 @@ export async function checkUrlReachable(rawUrl: string): Promise<UrlCheckResult>
   const base = { statusCode: null, elapsedMs: 0, inconclusive: false };
 
   if (!config.urlCheckEnabled) {
-    return { ...base, reachable: true, inconclusive: true, notes: 'Live URL checking is disabled (URL_CHECK_ENABLED=false).' };
+    return {
+      ...base,
+      reachable: true,
+      inconclusive: true,
+      notes: 'Live URL checking is disabled (URL_CHECK_ENABLED=false).',
+    };
   }
 
   let parsed: URL;
@@ -73,7 +168,12 @@ export async function checkUrlReachable(rawUrl: string): Promise<UrlCheckResult>
   }
 
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    return { ...base, reachable: false, elapsedMs: Date.now() - started, notes: `Unsupported scheme "${parsed.protocol}".` };
+    return {
+      ...base,
+      reachable: false,
+      elapsedMs: Date.now() - started,
+      notes: `Unsupported scheme "${parsed.protocol}".`,
+    };
   }
 
   if (isDisallowedHost(parsed.hostname)) {
@@ -86,36 +186,29 @@ export async function checkUrlReachable(rawUrl: string): Promise<UrlCheckResult>
     };
   }
 
-  const attempt = async (method: 'HEAD' | 'GET') => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    try {
-      return await fetch(parsed.toString(), {
-        method,
-        redirect: 'follow',
-        signal: controller.signal,
-        headers: {
-          // Some portals serve 403 to unknown agents.
-          'User-Agent': 'AI-Scholarship-Copilot/1.0 (link verification)',
-          Accept: '*/*',
-          ...(method === 'GET' ? { Range: 'bytes=0-2047' } : {}),
-        },
-      });
-    } finally {
-      clearTimeout(timer);
-    }
-  };
-
   try {
-    let response = await attempt('HEAD');
+    let guarded = await fetchGuarded(parsed, 'HEAD');
 
     // Retry with GET when HEAD is unsupported or blocked.
-    if (response.status === 405 || response.status === 403 || response.status === 501) {
-      response = await attempt('GET');
+    if (guarded.response.status === 405 || guarded.response.status === 403 || guarded.response.status === 501) {
+      guarded = await fetchGuarded(parsed, 'GET');
     }
 
+    const { response, blockedReason } = guarded;
     const elapsedMs = Date.now() - started;
-    const finalUrl = response.url && response.url !== rawUrl ? response.url : undefined;
+    const finalUrl = guarded.finalUrl !== rawUrl ? guarded.finalUrl : undefined;
+
+    // A refused hop means the destination is untrustworthy, whatever the last status was.
+    if (blockedReason) {
+      return {
+        reachable: false,
+        statusCode: response.status,
+        finalUrl,
+        elapsedMs,
+        inconclusive: false,
+        notes: `Not verified — ${blockedReason}.`,
+      };
+    }
 
     if (response.status >= 200 && response.status < 400) {
       return {
@@ -151,15 +244,18 @@ export async function checkUrlReachable(rawUrl: string): Promise<UrlCheckResult>
   } catch (err: any) {
     const elapsedMs = Date.now() - started;
     const aborted = err?.name === 'AbortError';
+    const tooManyRedirects = err?.code === 'TOO_MANY_REDIRECTS';
     // A network failure on our side must not be reported as a dead scholarship link.
     return {
       reachable: false,
       statusCode: null,
       elapsedMs,
-      inconclusive: true,
+      inconclusive: !tooManyRedirects,
       notes: aborted
         ? `No response within ${TIMEOUT_MS}ms — inconclusive.`
-        : `Network error during check (${err?.code || err?.message || 'unknown'}) — inconclusive.`,
+        : tooManyRedirects
+          ? `Redirect chain exceeded ${MAX_REDIRECTS} hops.`
+          : `Network error during check (${err?.code || err?.message || 'unknown'}) — inconclusive.`,
     };
   }
 }

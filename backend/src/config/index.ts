@@ -55,10 +55,10 @@ const llmApiKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || '';
 const llmProvider = !llmApiKey
   ? 'none'
   : /generativelanguage\.googleapis\.com/i.test(llmBaseUrl)
-  ? 'gemini'
-  : llmBaseUrl
-  ? 'openai-compatible'
-  : 'openai';
+    ? 'gemini'
+    : llmBaseUrl
+      ? 'openai-compatible'
+      : 'openai';
 
 const defaultModel = llmProvider === 'gemini' ? 'gemini-3.6-flash' : 'gpt-4o-mini';
 
@@ -108,6 +108,13 @@ export const config = {
   automationEnabled: process.env.AUTOMATION_ENABLED !== 'false',
   /** Trust X-Forwarded-For when the app sits behind a reverse proxy / load balancer. */
   trustProxy: process.env.TRUST_PROXY === 'true',
+  /**
+   * Re-read the account from the database on every authenticated request, so deleted
+   * accounts, role changes and password resets take effect immediately instead of
+   * persisting for the remainder of the token's lifetime. Costs one primary-key lookup
+   * per request. Set to 'false' only if that lookup becomes a measured bottleneck.
+   */
+  strictSessionCheck: process.env.AUTH_STRICT_SESSION_CHECK !== 'false',
   logLevel: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
 
   /**

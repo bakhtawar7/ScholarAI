@@ -1,11 +1,28 @@
 import { prisma } from '../utils/prisma';
 import { parseJsonField, safeJsonStringify } from '../utils/jsonHelper';
+import {
+  EMPTY_JSON_ARRAY,
+  insensitiveContains,
+  insensitiveEquals,
+  jsonArrayHasElement,
+  jsonObjectHasKey,
+} from '../utils/prismaFilters';
 import { MatchingService } from './matchingService';
 
 export interface ScholarshipSearchParams {
   q?: string;
   hostCountry?: string;
   country?: string;
+  /**
+   * Host-country allowlist. Used by the personalised sections to ask for "any of the
+   * student's target countries" in one query rather than one request per country.
+   */
+  countries?: string[];
+  /**
+   * Host-country denylist, for the "everywhere else" section. Applied after `countries`,
+   * so the two are safe to combine.
+   */
+  excludeCountries?: string[];
   degreeLevel?: string;
   degree?: string;
   field?: string;
@@ -27,6 +44,35 @@ export interface ScholarshipSearchParams {
   userId?: string;
 }
 
+/**
+ * The shape `formatScholarship` returns — derived from the function rather than restated,
+ * so the two cannot drift. Type positions are hoisted, so referencing the class declared
+ * below is fine.
+ */
+export type FormattedScholarship = NonNullable<ReturnType<typeof ScholarshipService.formatScholarship>>;
+
+/** One labelled group on the personalised scholarships view. */
+export interface PersonalisedSection {
+  key: 'home' | 'target' | 'international';
+  title: string;
+  subtitle: string;
+  /** Host countries this section covers. Empty for the catch-all international section. */
+  countries: string[];
+  items: FormattedScholarship[];
+  total: number;
+  /** True when the section is empty and a country-scoped live search could fill it. */
+  discoverable: boolean;
+}
+
+export interface PersonalisedScholarshipsResult {
+  profileComplete: boolean;
+  homeCountry: string | null;
+  targetCountries: string[];
+  sections: PersonalisedSection[];
+  /** Actionable gaps in the profile, phrased for the user. */
+  notices: string[];
+}
+
 export class ScholarshipService {
   public static formatScholarship(s: any) {
     if (!s) return null;
@@ -37,21 +83,29 @@ export class ScholarshipService {
     const languageRequirements = parseJsonField(s.languageRequirements, {});
     const requiredDocuments = parseJsonField(s.requiredDocuments, []);
 
+    /**
+     * Absent values are reported as absent.
+     *
+     * These three fields used to fall back to invented prose when the database held
+     * nothing: a scholarship with no stated nationality rule was described as "Open to all
+     * international applicants globally", one with no GPA rule as "No rigid minimum GPA
+     * threshold; holistic academic profile evaluated", and a missing eligibility summary
+     * was synthesised from the field list. All three are claims about someone else's
+     * funding programme that nobody had made.
+     *
+     * Text derived from data that *is* present (a nationality list, a numeric minGpa) is
+     * still composed here — that is formatting, not invention.
+     */
     const nationalityReqText =
       s.nationalityRequirements ||
       (eligibleNationalities && eligibleNationalities.length > 0
-        ? `Eligible for citizens/residents of: ${eligibleNationalities.join(', ')}`
-        : 'Open to all international applicants globally.');
+        ? `Open to citizens or residents of: ${eligibleNationalities.join(', ')}.`
+        : null);
 
     const gpaReqText =
-      s.gpaRequirements ||
-      (s.minGpa
-        ? `Minimum GPA requirement: ${s.minGpa} on a ${s.maxGpaScale || 4.0} grading scale.`
-        : 'No rigid minimum GPA threshold; holistic academic profile evaluated.');
+      s.gpaRequirements || (s.minGpa ? `Minimum GPA of ${s.minGpa} on a ${s.maxGpaScale || 4.0} scale.` : null);
 
-    const eligibilityDesc =
-      s.eligibilityDescription ||
-      `Open to high-achieving candidates meeting the academic credentials, degree prerequisites in ${fieldsOfStudy.join(', ')}, and English/program language proficiencies.`;
+    const eligibilityDesc = s.eligibilityDescription || null;
 
     let parsedCriteria: string[] = [];
     let parsedMissing: string[] = [];
@@ -61,19 +115,22 @@ export class ScholarshipService {
     if (s.userMatch) {
       const matchCrit = parseJsonField(s.userMatch.matchingCriteria, []);
       const matchReas = parseJsonField(s.userMatch.matchReasons, []);
-      parsedCriteria = (Array.isArray(matchCrit) && matchCrit.length > 0) ? matchCrit : (Array.isArray(matchReas) ? matchReas : []);
+      parsedCriteria =
+        Array.isArray(matchCrit) && matchCrit.length > 0 ? matchCrit : Array.isArray(matchReas) ? matchReas : [];
 
       const missCrit = parseJsonField(s.userMatch.missingCriteria, []);
       const missReqs = parseJsonField(s.userMatch.missingReqs, []);
-      parsedMissing = (Array.isArray(missCrit) && missCrit.length > 0) ? missCrit : (Array.isArray(missReqs) ? missReqs : []);
+      parsedMissing =
+        Array.isArray(missCrit) && missCrit.length > 0 ? missCrit : Array.isArray(missReqs) ? missReqs : [];
 
       const uncCrit = parseJsonField(s.userMatch.uncertainCriteria, []);
       const uncConc = parseJsonField(s.userMatch.concerns, []);
-      parsedUncertain = (Array.isArray(uncCrit) && uncCrit.length > 0) ? uncCrit : (Array.isArray(uncConc) ? uncConc : []);
+      parsedUncertain = Array.isArray(uncCrit) && uncCrit.length > 0 ? uncCrit : Array.isArray(uncConc) ? uncConc : [];
 
       const recCrit = parseJsonField(s.userMatch.recommendations, []);
       const recNext = parseJsonField(s.userMatch.nextSteps, []);
-      parsedRecommendations = (Array.isArray(recCrit) && recCrit.length > 0) ? recCrit : (Array.isArray(recNext) ? recNext : []);
+      parsedRecommendations =
+        Array.isArray(recCrit) && recCrit.length > 0 ? recCrit : Array.isArray(recNext) ? recNext : [];
     }
 
     return {
@@ -88,9 +145,12 @@ export class ScholarshipService {
       fieldsOfStudy,
       fields: fieldsOfStudy,
       fundingType: s.fundingType,
-      tuitionCoverage: s.tuitionCoverage || '100% Full Tuition Coverage',
-      stipend: s.stipendAmount,
-      stipendAmount: s.stipendAmount,
+      // null, not '100% Full Tuition Coverage'. Inventing a favourable financial term for a
+      // record that states none is the most consequential kind of fabrication this app
+      // could make — a student could choose where to apply based on it.
+      tuitionCoverage: s.tuitionCoverage || null,
+      stipend: s.stipendAmount || null,
+      stipendAmount: s.stipendAmount || null,
       accommodation: s.accommodationCoverage,
       accommodationCoverage: s.accommodationCoverage,
       accommodationDetails: s.accommodationDetails,
@@ -122,7 +182,8 @@ export class ScholarshipService {
         ? {
             id: s.userMatch.id,
             matchScore: s.userMatch.matchScore !== undefined ? s.userMatch.matchScore : s.userMatch.matchPercentage,
-            matchPercentage: s.userMatch.matchPercentage !== undefined ? s.userMatch.matchPercentage : s.userMatch.matchScore,
+            matchPercentage:
+              s.userMatch.matchPercentage !== undefined ? s.userMatch.matchPercentage : s.userMatch.matchScore,
             eligibilityStatus: s.userMatch.eligibilityStatus || s.userMatch.eligibility,
             eligibility: s.userMatch.eligibility || s.userMatch.eligibilityStatus,
             matchingCriteria: parsedCriteria,
@@ -158,42 +219,65 @@ export class ScholarshipService {
     const andClauses: any[] = [];
 
     // 1. Text Search (title, provider, university, organization, hostCountry, fieldsOfStudy, eligibilityDescription)
+    //
+    // Free text stays a loose substring match on purpose: someone typing "Engineering"
+    // should still find "Chemical Engineering". The facet filters below are the ones that
+    // must be element-exact.
     const searchQuery = (params.q || '').trim();
     if (searchQuery) {
       andClauses.push({
         OR: [
-          { title: { contains: searchQuery } },
-          { provider: { contains: searchQuery } },
-          { university: { contains: searchQuery } },
-          { organization: { contains: searchQuery } },
-          { hostCountry: { contains: searchQuery } },
-          { fieldsOfStudy: { contains: searchQuery } },
-          { eligibilityDescription: { contains: searchQuery } },
+          { title: insensitiveContains(searchQuery) },
+          { provider: insensitiveContains(searchQuery) },
+          { university: insensitiveContains(searchQuery) },
+          { organization: insensitiveContains(searchQuery) },
+          { hostCountry: insensitiveContains(searchQuery) },
+          { fieldsOfStudy: insensitiveContains(searchQuery) },
+          { eligibilityDescription: insensitiveContains(searchQuery) },
         ],
       });
     }
 
     // 2. Country Filter
+    //
+    // hostCountry is a scalar column and the dropdown is populated from exact groupBy
+    // values, so this is an equality test. A substring test made "Ireland" match "Ireland"
+    // and any longer country name containing it.
     const targetCountry = (params.country || params.hostCountry || '').trim();
     if (targetCountry && targetCountry.toLowerCase() !== 'all') {
       andClauses.push({
-        hostCountry: { contains: targetCountry },
+        hostCountry: insensitiveEquals(targetCountry),
       });
+    }
+
+    // 2b. Host-country allowlist / denylist, used by the personalised sections.
+    const includeCountries = (params.countries || []).map((c) => String(c || '').trim()).filter(Boolean);
+    if (includeCountries.length > 0) {
+      andClauses.push({ OR: includeCountries.map((c) => ({ hostCountry: insensitiveEquals(c) })) });
+    }
+
+    const excludeCountries = (params.excludeCountries || []).map((c) => String(c || '').trim()).filter(Boolean);
+    if (excludeCountries.length > 0) {
+      // NOT + OR rather than notIn, so the comparison stays case-insensitive on PostgreSQL.
+      andClauses.push({ NOT: { OR: excludeCountries.map((c) => ({ hostCountry: insensitiveEquals(c) })) } });
     }
 
     // 3. Degree Level Filter (e.g. BACHELORS, MASTERS, PHD, POSTDOC, SHORT_COURSE)
     const targetDegree = (params.degreeLevel || params.degree || '').trim();
     if (targetDegree && targetDegree.toLowerCase() !== 'all') {
       andClauses.push({
-        degreeLevels: { contains: targetDegree },
+        degreeLevels: jsonArrayHasElement(targetDegree),
       });
     }
 
     // 4. Field of Study Filter
+    //
+    // Element-exact: the facet list offers "Engineering" and "Chemical Engineering" as
+    // separate options with separate counts, so selecting one must not return the other.
     const targetField = (params.field || params.fieldsOfStudy || '').trim();
     if (targetField && targetField.toLowerCase() !== 'all') {
       andClauses.push({
-        fieldsOfStudy: { contains: targetField },
+        fieldsOfStudy: jsonArrayHasElement(targetField),
       });
     }
 
@@ -210,10 +294,7 @@ export class ScholarshipService {
       const gpaVal = typeof params.minGpa === 'number' ? params.minGpa : parseFloat(params.minGpa);
       if (!isNaN(gpaVal)) {
         andClauses.push({
-          OR: [
-            { minGpa: null },
-            { minGpa: { lte: gpaVal } },
-          ],
+          OR: [{ minGpa: null }, { minGpa: { lte: gpaVal } }],
         });
       }
     }
@@ -227,22 +308,31 @@ export class ScholarshipService {
     }
 
     // 8. Nationality Filter
+    //
+    // This is the sharpest case for element-exact matching: a substring test let a
+    // scholarship restricted to ["Nigeria"] match a student filtering "Niger", i.e. the
+    // app told an ineligible student they qualified. The prose column stays a substring
+    // match because it is free text, not a serialised list.
     const targetNationality = (params.nationality || '').trim();
     if (targetNationality && targetNationality.toLowerCase() !== 'all') {
       andClauses.push({
         OR: [
-          { eligibleNationalities: '[]' },
-          { eligibleNationalities: { contains: targetNationality } },
-          { nationalityRequirements: { contains: targetNationality } },
+          // No stated restriction — open to any nationality.
+          { eligibleNationalities: EMPTY_JSON_ARRAY },
+          { eligibleNationalities: jsonArrayHasElement(targetNationality) },
+          { nationalityRequirements: insensitiveContains(targetNationality) },
         ],
       });
     }
 
     // 9. Language Filter (e.g. IELTS, TOEFL)
+    //
+    // languageRequirements is a serialised object like {"IELTS":6.5}; matching the quoted
+    // key avoids matching a score or an unrelated substring in the payload.
     const targetLanguage = (params.language || '').trim();
     if (targetLanguage && targetLanguage.toLowerCase() !== 'all') {
       andClauses.push({
-        languageRequirements: { contains: targetLanguage },
+        languageRequirements: jsonObjectHasKey(targetLanguage),
       });
     }
 
@@ -258,10 +348,7 @@ export class ScholarshipService {
 
     if (deadlineParam === 'upcoming' || deadlineParam === 'active') {
       andClauses.push({
-        OR: [
-          { deadline: null },
-          { deadline: { gte: now } },
-        ],
+        OR: [{ deadline: null }, { deadline: { gte: now } }],
       });
     } else if (deadlineParam === 'next_30_days') {
       const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -299,14 +386,22 @@ export class ScholarshipService {
     let orderBy: any = { createdAt: 'desc' };
 
     switch (sortBy) {
+      /**
+       * Nulls last, in both directions.
+       *
+       * SQL sorts NULL first on ASC, so "earliest deadline" led with every record that has
+       * no deadline at all — here, 5 of 21 — burying the genuinely soonest one below the
+       * fold on a deadline-driven page. A missing deadline is unknown, not early, and it is
+       * not "latest" either, so it belongs at the end of both orderings.
+       */
       case 'deadline':
       case 'deadline_asc':
       case 'earliest_deadline':
-        orderBy = { deadline: 'asc' };
+        orderBy = { deadline: { sort: 'asc', nulls: 'last' } };
         break;
       case 'deadline_desc':
       case 'latest_deadline':
-        orderBy = { deadline: 'desc' };
+        orderBy = { deadline: { sort: 'desc', nulls: 'last' } };
         break;
       case 'title':
       case 'title_asc':
@@ -354,9 +449,9 @@ export class ScholarshipService {
     ]);
 
     // Augment with User Profile Matches, Saved Status, and Application Status if userId provided
-    let matchesMap: Record<string, any> = {};
-    let savedMap: Record<string, boolean> = {};
-    let appsMap: Record<string, string> = {};
+    const matchesMap: Record<string, any> = {};
+    const savedMap: Record<string, boolean> = {};
+    const appsMap: Record<string, string> = {};
 
     if (params.userId) {
       const [profile, savedList, appList] = await Promise.all([
@@ -399,15 +494,14 @@ export class ScholarshipService {
       }
     }
 
-    let augmentedItems = rawItems.map(
-      (item: any) =>
-        // Input is always a real row here, so the formatted result is never null.
-        this.formatScholarship({
-          ...item,
-          userMatch: matchesMap[item.id] || null,
-          isSaved: Boolean(savedMap[item.id]),
-          applicationStatus: appsMap[item.id] || null,
-        })!
+    let augmentedItems = rawItems.map((item: any) =>
+      // Input is always a real row here, so the formatted result is never null.
+      this.formatScholarship({
+        ...item,
+        userMatch: matchesMap[item.id] || null,
+        isSaved: Boolean(savedMap[item.id]),
+        applicationStatus: appsMap[item.id] || null,
+      })!
     );
 
     // If sorting by user match score
@@ -448,6 +542,127 @@ export class ScholarshipService {
 
   static invalidateFilterFacets() {
     this.facetCache = null;
+  }
+
+  /**
+   * The scholarship page's default view, grouped by how the student relates to each country.
+   *
+   * Ranking alone was not enough. The page already defaulted to `sortBy: 'match'`, so
+   * results *were* personalised — but with a small catalogue that just reorders the same
+   * rows, which reads as "nothing is personalised". Splitting into labelled sections makes
+   * the relationship explicit, and surfaces the gap that ranking hid: when no scholarship
+   * is hosted in the student's own country, that is a fact worth showing rather than an
+   * absence buried at the bottom of a list.
+   *
+   * Sections cover disjoint country sets, so no scholarship appears twice: the target
+   * section subtracts the home country, and the international section excludes both.
+   */
+  static async getPersonalisedSections(
+    userId: string,
+    opts: { perSection?: number } = {}
+  ): Promise<PersonalisedScholarshipsResult> {
+    const perSection = Math.min(24, Math.max(3, opts.perSection || 6));
+
+    const profile = await prisma.studentProfile.findUnique({ where: { userId } });
+
+    if (!profile) {
+      return {
+        profileComplete: false,
+        homeCountry: null,
+        targetCountries: [],
+        sections: [],
+        notices: ['Complete your profile to see scholarships grouped for your country and study destinations.'],
+      };
+    }
+
+    /** "Not Specified" is the placeholder written at registration, not a real answer. */
+    const meaningful = (v?: string | null) => {
+      const s = String(v || '').trim();
+      return s && s.toLowerCase() !== 'not specified' && s.toLowerCase() !== 'unknown' ? s : null;
+    };
+
+    const homeCountry = meaningful(profile.countryOfResidence);
+    const rawTargets = parseJsonField<string[]>(profile.targetCountries, [])
+      .map((c) => String(c || '').trim())
+      .filter(Boolean);
+
+    // A home country listed as a target belongs to the home section, not both.
+    const targetCountries = rawTargets.filter((c) => !homeCountry || c.toLowerCase() !== homeCountry.toLowerCase());
+
+    const notices: string[] = [];
+    if (!homeCountry) {
+      notices.push('Add your country of residence to your profile to see scholarships hosted in your own country.');
+    }
+    if (targetCountries.length === 0) {
+      notices.push('Add target countries to your profile to see scholarships in the places you want to study.');
+    }
+
+    const excludeFromInternational = [...(homeCountry ? [homeCountry] : []), ...targetCountries];
+
+    // Common shape for every section: upcoming deadlines only, ranked by match score.
+    const base = { userId, sortBy: 'match', deadline: 'upcoming', limit: perSection, page: 1 } as const;
+
+    /** Narrows a full search result down to what a section needs. */
+    const runSection = async (
+      params: ScholarshipSearchParams
+    ): Promise<{ items: FormattedScholarship[]; total: number }> => {
+      const res = await this.searchScholarships(params);
+      return { items: res.items as FormattedScholarship[], total: res.total };
+    };
+
+    const empty: { items: FormattedScholarship[]; total: number } = { items: [], total: 0 };
+
+    const [home, target, international] = await Promise.all([
+      homeCountry ? runSection({ ...base, countries: [homeCountry] }) : Promise.resolve(empty),
+      targetCountries.length > 0 ? runSection({ ...base, countries: targetCountries }) : Promise.resolve(empty),
+      runSection({ ...base, excludeCountries: excludeFromInternational }),
+    ]);
+
+    const sections: PersonalisedSection[] = [];
+
+    if (homeCountry) {
+      sections.push({
+        key: 'home',
+        title: `In ${homeCountry}`,
+        subtitle: 'Scholarships hosted in your own country — no relocation required.',
+        countries: [homeCountry],
+        items: home.items,
+        total: home.total,
+        // An empty home section is the one worth offering a live search for: the seeded
+        // catalogue is entirely study-abroad destinations.
+        discoverable: home.total === 0,
+      });
+    }
+
+    if (targetCountries.length > 0) {
+      sections.push({
+        key: 'target',
+        title: 'In your target countries',
+        subtitle: `Where you said you want to study: ${targetCountries.join(', ')}.`,
+        countries: targetCountries,
+        items: target.items,
+        total: target.total,
+        discoverable: target.total === 0,
+      });
+    }
+
+    sections.push({
+      key: 'international',
+      title: 'Elsewhere in the world',
+      subtitle: 'Strong matches outside the countries on your profile.',
+      countries: [],
+      items: international.items,
+      total: international.total,
+      discoverable: false,
+    });
+
+    return {
+      profileComplete: Boolean(homeCountry && targetCountries.length > 0),
+      homeCountry,
+      targetCountries,
+      sections,
+      notices,
+    };
   }
 
   static async getFilterFacets() {
@@ -561,10 +776,7 @@ export class ScholarshipService {
     // check first to return a clean 409 rather than a raw constraint error.
     const duplicate = await prisma.scholarship.findFirst({
       where: {
-        OR: [
-          { title: data.title, provider: data.provider },
-          { officialUrl: data.officialUrl },
-        ],
+        OR: [{ title: data.title, provider: data.provider }, { officialUrl: data.officialUrl }],
       },
       select: { id: true, title: true },
     });
@@ -598,9 +810,10 @@ export class ScholarshipService {
           ? safeJsonStringify(data.eligibleNationalities)
           : safeJsonStringify([]),
         nationalityRequirements: data.nationalityRequirements || null,
-        languageRequirements: typeof data.languageRequirements === 'object'
-          ? safeJsonStringify(data.languageRequirements)
-          : safeJsonStringify({}),
+        languageRequirements:
+          typeof data.languageRequirements === 'object'
+            ? safeJsonStringify(data.languageRequirements)
+            : safeJsonStringify({}),
         eligibilityDescription: data.eligibilityDescription || null,
         requiredDocuments: Array.isArray(data.requiredDocuments)
           ? safeJsonStringify(data.requiredDocuments)
@@ -649,16 +862,21 @@ export class ScholarshipService {
     if (data.organization !== undefined) updateData.organization = data.organization;
     if (data.hostCountry !== undefined) updateData.hostCountry = data.hostCountry;
     if (data.degreeLevels !== undefined) {
-      updateData.degreeLevels = Array.isArray(data.degreeLevels) ? safeJsonStringify(data.degreeLevels) : data.degreeLevels;
+      updateData.degreeLevels = Array.isArray(data.degreeLevels)
+        ? safeJsonStringify(data.degreeLevels)
+        : data.degreeLevels;
     }
     if (data.fieldsOfStudy !== undefined) {
-      updateData.fieldsOfStudy = Array.isArray(data.fieldsOfStudy) ? safeJsonStringify(data.fieldsOfStudy) : data.fieldsOfStudy;
+      updateData.fieldsOfStudy = Array.isArray(data.fieldsOfStudy)
+        ? safeJsonStringify(data.fieldsOfStudy)
+        : data.fieldsOfStudy;
     }
     if (data.fundingType !== undefined) updateData.fundingType = data.fundingType;
     if (data.tuitionCoverage !== undefined) updateData.tuitionCoverage = data.tuitionCoverage;
     if (data.stipendAmount !== undefined) updateData.stipendAmount = data.stipendAmount;
     if (data.travelAllowance !== undefined) updateData.travelAllowance = Boolean(data.travelAllowance);
-    if (data.accommodationCoverage !== undefined) updateData.accommodationCoverage = Boolean(data.accommodationCoverage);
+    if (data.accommodationCoverage !== undefined)
+      updateData.accommodationCoverage = Boolean(data.accommodationCoverage);
     if (data.accommodationDetails !== undefined) updateData.accommodationDetails = data.accommodationDetails;
     if (data.minGpa !== undefined) updateData.minGpa = data.minGpa !== null ? parseFloat(data.minGpa) : null;
     if (data.maxGpaScale !== undefined) updateData.maxGpaScale = parseFloat(data.maxGpaScale);
@@ -670,9 +888,10 @@ export class ScholarshipService {
     }
     if (data.nationalityRequirements !== undefined) updateData.nationalityRequirements = data.nationalityRequirements;
     if (data.languageRequirements !== undefined) {
-      updateData.languageRequirements = typeof data.languageRequirements === 'object'
-        ? safeJsonStringify(data.languageRequirements)
-        : data.languageRequirements;
+      updateData.languageRequirements =
+        typeof data.languageRequirements === 'object'
+          ? safeJsonStringify(data.languageRequirements)
+          : data.languageRequirements;
     }
     if (data.eligibilityDescription !== undefined) updateData.eligibilityDescription = data.eligibilityDescription;
     if (data.requiredDocuments !== undefined) {

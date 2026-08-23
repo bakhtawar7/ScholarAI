@@ -205,6 +205,11 @@ export const schemas = {
       id: { type: 'string', format: 'uuid' },
       email: { type: 'string', format: 'email' },
       role: { type: 'string', enum: ['STUDENT', 'ADMIN'] },
+      isAdmin: {
+        type: 'boolean',
+        description:
+          'Whether this account may reach admin-only routes. Computed server-side from the role **or** membership of ADMIN_EMAILS — read this rather than comparing `role`, which does not reflect an ADMIN_EMAILS grant.',
+      },
       isVerified: { type: 'boolean' },
       createdAt: { type: 'string', format: 'date-time' },
       profile: { allOf: [{ $ref: '#/components/schemas/StudentProfile' }], nullable: true },
@@ -806,7 +811,12 @@ export const schemas = {
     type: 'object',
     required: ['content'],
     properties: {
-      content: { type: 'string', minLength: 1, maxLength: 4000, example: 'Am I eligible for the DAAD EPOS scholarship?' },
+      content: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 4000,
+        example: 'Am I eligible for the DAAD EPOS scholarship?',
+      },
     },
   },
 

@@ -33,11 +33,7 @@ interface Res {
   body: any;
 }
 
-function request(
-  method: string,
-  path: string,
-  options: { token?: string; body?: any } = {}
-): Promise<Res> {
+function request(method: string, path: string, options: { token?: string; body?: any } = {}): Promise<Res> {
   return new Promise((resolve, reject) => {
     const payload = options.body !== undefined ? JSON.stringify(options.body) : null;
     const url = new URL(baseUrl + path);
@@ -76,7 +72,11 @@ function request(
 }
 
 const stamp = Date.now();
-const student = { email: `journey.student.${stamp}@example.com`, password: 'JourneyTest123', fullName: 'Journey Student' };
+const student = {
+  email: `journey.student.${stamp}@example.com`,
+  password: 'JourneyTest123',
+  fullName: 'Journey Student',
+};
 const intruder = { email: `journey.intruder.${stamp}@example.com`, password: 'JourneyTest123', fullName: 'Intruder' };
 
 async function main() {
@@ -120,7 +120,9 @@ async function main() {
         }
       );
       assert(
-        regProfile?.languageTests && typeof regProfile.languageTests === 'object' && !Array.isArray(regProfile.languageTests),
+        regProfile?.languageTests &&
+          typeof regProfile.languageTests === 'object' &&
+          !Array.isArray(regProfile.languageTests),
         'Register response parses languageTests into an object',
         typeof regProfile?.languageTests
       );
@@ -173,7 +175,11 @@ async function main() {
           workExperienceYears: 1.5,
         },
       });
-      assert(profileRes.status === 200 && profileRes.body.gpa === 3.7, 'Profile saves and returns parsed values', profileRes.body);
+      assert(
+        profileRes.status === 200 && profileRes.body.gpa === 3.7,
+        'Profile saves and returns parsed values',
+        profileRes.body
+      );
       assert(
         Array.isArray(profileRes.body.targetCountries) && profileRes.body.targetCountries.length === 2,
         'targetCountries round-trips as an array'
@@ -186,7 +192,11 @@ async function main() {
         'Partial update preserves targetCountries (regression: fields were being erased)',
         partial.body.targetCountries
       );
-      assert(partial.body.maxGpa === 4.0, 'Partial update preserves maxGpa (regression: reset to 4.0)', partial.body.maxGpa);
+      assert(
+        partial.body.maxGpa === 4.0,
+        'Partial update preserves maxGpa (regression: reset to 4.0)',
+        partial.body.maxGpa
+      );
 
       // Invalid GPA must be a 400, not a 500 from NaN reaching Prisma.
       const badGpa = await request('POST', '/api/profile', { token, body: { gpa: 'not-a-number' } });
@@ -215,7 +225,10 @@ async function main() {
         ),
         `Eligibility status is a valid enum value (${elig.body.eligibilityStatus})`
       );
-      assert(typeof elig.body.disclaimer === 'string' && elig.body.disclaimer.length > 0, 'Eligibility includes an advisory disclaimer');
+      assert(
+        typeof elig.body.disclaimer === 'string' && elig.body.disclaimer.length > 0,
+        'Eligibility includes an advisory disclaimer'
+      );
 
       const save = await request('POST', `/api/saved/${scholarshipId}`, { token });
       assert(save.status === 201, 'Save scholarship returns 201', save.body);
@@ -245,7 +258,11 @@ async function main() {
         token,
         body: { content: 'Find fully funded Computer Science scholarships in Germany' },
       });
-      assert(search.status === 200 && search.body.message?.content, 'Chat search returns an assistant reply', search.body);
+      assert(
+        search.status === 200 && search.body.message?.content,
+        'Chat search returns an assistant reply',
+        search.body
+      );
       assert(
         !/undefined|NaN|\[object Object\]/.test(search.body.message.content),
         'Assistant reply has no undefined/NaN artefacts',
@@ -301,7 +318,10 @@ async function main() {
       );
 
       const dupeApp = await request('POST', '/api/applications', { token, body: { scholarshipId } });
-      assert(dupeApp.status === 201 && dupeApp.body.id === applicationId, 'Duplicate application returns the existing record');
+      assert(
+        dupeApp.status === 201 && dupeApp.body.id === applicationId,
+        'Duplicate application returns the existing record'
+      );
 
       const badStatus = await request('PATCH', `/api/applications/${applicationId}/status`, {
         token,
@@ -319,9 +339,15 @@ async function main() {
 
       const checklistId = apps.body[0].checklists[0].id;
       const toggle = await request('PATCH', `/api/applications/checklist/${checklistId}`, { token });
-      assert(toggle.status === 200 && toggle.body.isCompleted === true, 'Toggle checklist item to complete', toggle.body);
+      assert(
+        toggle.status === 200 && toggle.body.isCompleted === true,
+        'Toggle checklist item to complete',
+        toggle.body
+      );
 
-      const foreignToggle = await request('PATCH', `/api/applications/checklist/${checklistId}`, { token: intruderToken });
+      const foreignToggle = await request('PATCH', `/api/applications/checklist/${checklistId}`, {
+        token: intruderToken,
+      });
       assert(foreignToggle.status === 404, 'Another user cannot toggle this checklist item', foreignToggle.body);
 
       const addItem = await request('POST', `/api/applications/${applicationId}/checklist`, {
@@ -347,7 +373,11 @@ async function main() {
       await prisma.scholarship.update({ where: { id: scholarshipId }, data: { deadline: inThreeDays } });
 
       const deadlines = await request('GET', '/api/deadlines', { token });
-      assert(deadlines.status === 200 && deadlines.body.length > 0, 'Deadline tracker returns the tracked scholarship', deadlines.body);
+      assert(
+        deadlines.status === 200 && deadlines.body.length > 0,
+        'Deadline tracker returns the tracked scholarship',
+        deadlines.body
+      );
       const entry = deadlines.body.find((d: any) => d.scholarship.id === scholarshipId);
       assert(Boolean(entry), 'Tracked scholarship appears in the deadline list');
       assert(entry?.urgency === 'CRITICAL', `Three-day deadline is CRITICAL (got ${entry?.urgency})`);
@@ -359,7 +389,10 @@ async function main() {
       // Run it through the workflow engine instead.
       const run1 = await runWorkflow('deadline-reminder', { trigger: 'MANUAL', triggeredBy: 'journey-test' });
       assert(run1.status === 'SUCCESS', 'Deadline reminder workflow succeeds', run1.error);
-      assert((run1.metrics?.notificationsCreated ?? 0) > 0, `Reminder created a notification (${run1.metrics?.notificationsCreated})`);
+      assert(
+        (run1.metrics?.notificationsCreated ?? 0) > 0,
+        `Reminder created a notification (${run1.metrics?.notificationsCreated})`
+      );
 
       const notifs = await request('GET', '/api/notifications', { token });
       assert(notifs.status === 200 && notifs.body.length > 0, 'Notification is visible to the student', notifs.body);
@@ -377,7 +410,9 @@ async function main() {
       const read = await request('PATCH', `/api/notifications/${deadlineNotif.id}/read`, { token });
       assert(read.status === 200, 'Mark notification as read', read.body);
 
-      const foreignRead = await request('PATCH', `/api/notifications/${deadlineNotif.id}/read`, { token: intruderToken });
+      const foreignRead = await request('PATCH', `/api/notifications/${deadlineNotif.id}/read`, {
+        token: intruderToken,
+      });
       assert(foreignRead.status === 404, 'Another user cannot mark this notification read', foreignRead.body);
     }
 
@@ -438,7 +473,10 @@ async function main() {
           ],
         },
       });
-      assert(rerun.metrics?.created === 0 && rerun.metrics?.updated === 1, 'Re-ingestion updates instead of duplicating');
+      assert(
+        rerun.metrics?.created === 0 && rerun.metrics?.updated === 1,
+        'Re-ingestion updates instead of duplicating'
+      );
       const countAfter = await prisma.scholarship.count({ where: { title: uniqueTitle } });
       assert(countAfter === 1, `Exactly one row exists for the title (${countAfter})`);
 
@@ -448,7 +486,10 @@ async function main() {
         payload: { limit: 25 },
       });
       assert(verification.status === 'SUCCESS', 'Verification workflow succeeds', verification.error);
-      assert((verification.metrics?.audited ?? 0) > 0, `Verification audited records (${verification.metrics?.audited})`);
+      assert(
+        (verification.metrics?.audited ?? 0) > 0,
+        `Verification audited records (${verification.metrics?.audited})`
+      );
 
       const verified = await prisma.scholarship.findUnique({ where: { id: created!.id } });
       assert(
@@ -459,7 +500,10 @@ async function main() {
 
       const matching = await runWorkflow('personalized-matching', { trigger: 'MANUAL', triggeredBy: 'journey-test' });
       assert(matching.status === 'SUCCESS', 'Matching workflow succeeds', matching.error);
-      assert((matching.metrics?.profilesProcessed ?? 0) > 0, `Matching processed profiles (${matching.metrics?.profilesProcessed})`);
+      assert(
+        (matching.metrics?.profilesProcessed ?? 0) > 0,
+        `Matching processed profiles (${matching.metrics?.profilesProcessed})`
+      );
 
       const profile = await prisma.studentProfile.findFirst({
         where: { user: { email: student.email } },
@@ -469,12 +513,18 @@ async function main() {
         where: { profileId_scholarshipId: { profileId: profile!.id, scholarshipId: created!.id } },
       });
       assert(Boolean(match), 'A match row exists for the new scholarship');
-      assert((match?.matchPercentage ?? 0) >= 80, `New scholarship scores highly for this profile (${match?.matchPercentage})`);
+      assert(
+        (match?.matchPercentage ?? 0) >= 80,
+        `New scholarship scores highly for this profile (${match?.matchPercentage})`
+      );
 
       const notify = await runWorkflow('new-match-notification', {
         trigger: 'MANUAL',
         triggeredBy: 'journey-test',
-        payload: { minMatchScore: 75 },
+        // Explicit limit: the default batch is 100 match rows, so on a database with
+        // accumulated profiles this student's match fell outside the batch and the
+        // assertions below failed for reasons unrelated to the behaviour under test.
+        payload: { minMatchScore: 75, limit: 500 },
       });
       assert(notify.status === 'SUCCESS', 'Match-notification workflow succeeds', notify.error);
       assert((notify.metrics?.dispatched ?? 0) > 0, `Match notifications dispatched (${notify.metrics?.dispatched})`);
@@ -482,7 +532,7 @@ async function main() {
       const notifyAgain = await runWorkflow('new-match-notification', {
         trigger: 'MANUAL',
         triggeredBy: 'journey-test',
-        payload: { minMatchScore: 75 },
+        payload: { minMatchScore: 75, limit: 500 },
       });
       assert(
         (notifyAgain.metrics?.dispatched ?? 0) === 0 && (notifyAgain.metrics?.suppressed ?? 0) > 0,
@@ -498,12 +548,29 @@ async function main() {
       );
 
       // Dispatch must claim rows so nothing is handed out twice.
-      const dispatch1 = await runWorkflow('notification-dispatch', { trigger: 'MANUAL', triggeredBy: 'journey-test' });
-      assert((dispatch1.metrics?.dispatched ?? 0) > 0, `Dispatch claimed notifications (${dispatch1.metrics?.dispatched})`);
-      const dispatch2 = await runWorkflow('notification-dispatch', { trigger: 'MANUAL', triggeredBy: 'journey-test' });
+      //
+      // The metric is `claimed`; there is no `dispatched` field on this path. Reading the
+      // wrong name made the first assertion fail permanently and — worse — made the second
+      // pass vacuously, since `undefined ?? 0` equals the 0 it was checking for. The suite
+      // reported PASS on a regression check that was testing nothing.
+      //
+      // The explicit limit raises the batch above the 50-row default so the first call
+      // drains the queue; otherwise "the second dispatch claims nothing" is only true when
+      // fewer than 50 notifications happen to be pending.
+      const dispatch1 = await runWorkflow('notification-dispatch', {
+        trigger: 'MANUAL',
+        triggeredBy: 'journey-test',
+        payload: { limit: 200 },
+      });
+      assert((dispatch1.metrics?.claimed ?? 0) > 0, `Dispatch claimed notifications (${dispatch1.metrics?.claimed})`);
+      const dispatch2 = await runWorkflow('notification-dispatch', {
+        trigger: 'MANUAL',
+        triggeredBy: 'journey-test',
+        payload: { limit: 200 },
+      });
       assert(
-        (dispatch2.metrics?.dispatched ?? 0) === 0,
-        `Second dispatch claims nothing (regression: unread rows were re-returned forever) — got ${dispatch2.metrics?.dispatched}`
+        (dispatch2.metrics?.claimed ?? 0) === 0,
+        `Second dispatch claims nothing (regression: unread rows were re-returned forever) — got ${dispatch2.metrics?.claimed}`
       );
 
       // Expired records must be demoted out of the active catalogue.
@@ -511,7 +578,10 @@ async function main() {
         where: { id: created!.id },
         data: { deadline: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), verificationStatus: 'VERIFIED' },
       });
-      const monitor = await runWorkflow('scholarship-update-monitoring', { trigger: 'MANUAL', triggeredBy: 'journey-test' });
+      const monitor = await runWorkflow('scholarship-update-monitoring', {
+        trigger: 'MANUAL',
+        triggeredBy: 'journey-test',
+      });
       assert(monitor.status === 'SUCCESS', 'Update-monitoring workflow succeeds', monitor.error);
       const expired = await prisma.scholarship.findUnique({ where: { id: created!.id } });
       assert(
@@ -546,7 +616,11 @@ async function main() {
           officialUrl: 'https://example.org/attack',
         },
       });
-      assert(studentCreate.status === 403, 'Student cannot create scholarships (broken access control fix)', studentCreate.body);
+      assert(
+        studentCreate.status === 403,
+        'Student cannot create scholarships (broken access control fix)',
+        studentCreate.body
+      );
 
       const studentDelete = await request('DELETE', `/api/scholarships/${scholarshipId}`, { token });
       assert(studentDelete.status === 403, 'Student cannot delete scholarships', studentDelete.body);
@@ -567,19 +641,33 @@ async function main() {
       assert(missing.status === 404, 'Unknown scholarship id returns 404', missing.body);
 
       const unknownRoute = await request('GET', '/api/does-not-exist');
-      assert(unknownRoute.status === 404 && unknownRoute.body.error, 'Unknown route returns a JSON 404', unknownRoute.body);
+      assert(
+        unknownRoute.status === 404 && unknownRoute.body.error,
+        'Unknown route returns a JSON 404',
+        unknownRoute.body
+      );
 
       const health = await request('GET', '/api/health');
       assert(health.status === 200 && health.body.status === 'online', 'Health endpoint responds', health.body);
 
       const ready = await request('GET', '/api/health/ready');
-      assert(ready.status === 200 && ready.body.database === 'connected', 'Readiness probe confirms the database', ready.body);
+      assert(
+        ready.status === 200 && ready.body.database === 'connected',
+        'Readiness probe confirms the database',
+        ready.body
+      );
 
       // Cross-user data isolation on list endpoints.
       const intruderSaved = await request('GET', '/api/saved', { token: intruderToken });
-      assert(intruderSaved.status === 200 && intruderSaved.body.length === 0, 'A new user sees no other user’s saved items');
+      assert(
+        intruderSaved.status === 200 && intruderSaved.body.length === 0,
+        'A new user sees no other user’s saved items'
+      );
       const intruderApps = await request('GET', '/api/applications', { token: intruderToken });
-      assert(intruderApps.status === 200 && intruderApps.body.length === 0, 'A new user sees no other user’s applications');
+      assert(
+        intruderApps.status === 200 && intruderApps.body.length === 0,
+        'A new user sees no other user’s applications'
+      );
 
       // Pagination bounds must be enforced.
       const overLimit = await request('GET', '/api/scholarships?limit=99999', { token });
@@ -587,7 +675,9 @@ async function main() {
     }
   } finally {
     // Clean up everything this run created.
-    await prisma.user.deleteMany({ where: { email: { in: [student.email, intruder.email, `weak.${stamp}@example.com`] } } });
+    await prisma.user.deleteMany({
+      where: { email: { in: [student.email, intruder.email, `weak.${stamp}@example.com`] } },
+    });
     await prisma.scholarship.deleteMany({ where: { title: { contains: `Journey Test Scholarship ${stamp}` } } });
     await prisma.workflowRun.deleteMany({ where: { triggeredBy: 'journey-test' } });
     await prisma.$disconnect();

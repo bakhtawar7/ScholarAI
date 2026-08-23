@@ -1,7 +1,11 @@
 import http from 'http';
 import app from '../index';
 
-const BASE_URL = 'http://localhost:5000/api';
+/**
+ * Resolved once the server is listening. Port 0 asks the OS for a free port, so the suite
+ * no longer collides with a dev server (or another suite) already holding 5000.
+ */
+let BASE_URL = '';
 let server: any;
 
 function makeRequest(method: string, path: string, body?: any, token?: string): Promise<{ status: number; data: any }> {
@@ -47,7 +51,13 @@ function makeRequest(method: string, path: string, body?: any, token?: string): 
 async function runTests() {
   console.log('🧪 Starting Auth & Student Profile Automated Tests...\n');
   await new Promise<void>((resolve) => {
-    server = app.listen(5000, () => resolve());
+    const s = app.listen(0, () => {
+      const port = (s.address() as any).port;
+      BASE_URL = `http://127.0.0.1:${port}/api`;
+      server = s;
+      console.log(`Server listening on ${BASE_URL}\n`);
+      resolve();
+    });
   });
 
   const testEmail = `testuser_${Date.now()}@example.com`;
@@ -76,10 +86,13 @@ async function runTests() {
     password: testPassword,
     fullName: 'Jane Doe Duplicate',
   });
-  if (dupRes.status === 400) {
-    console.log('✅ Duplicate Email Prevention SUCCESS (Returned 400 Bad Request)');
+  // 409 Conflict, not 400: the request is well-formed, the address is already taken.
+  // This assertion expected 400 and so had been failing since the API adopted 409 —
+  // undetected because the suite had no npm script and was never run.
+  if (dupRes.status === 409) {
+    console.log('✅ Duplicate Email Prevention SUCCESS (Returned 409 Conflict)');
   } else {
-    console.error('❌ Duplicate Email Test FAILED:', dupRes);
+    console.error('❌ Duplicate Email Test FAILED (expected 409):', dupRes);
     process.exit(1);
   }
 

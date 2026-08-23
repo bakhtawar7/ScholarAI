@@ -60,7 +60,10 @@ function parseResults(html: string): SearchHit[] {
   const hits: SearchHit[] = [];
 
   // Each organic result sits in a `result results_links...` container.
-  const blocks = html.match(/<div class="result[^"]*results_links[^"]*"[\s\S]*?(?=<div class="result[^"]*results_links|<\/body>)/g) || [];
+  const blocks =
+    html.match(
+      /<div class="result[^"]*results_links[^"]*"[\s\S]*?(?=<div class="result[^"]*results_links|<\/body>)/g
+    ) || [];
 
   for (const block of blocks) {
     const linkMatch = block.match(/<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
@@ -103,7 +106,8 @@ async function searchOne(query: string, recencyDays?: number): Promise<SearchHit
         // A generic desktop UA; the endpoint serves a bot-challenge page to unknown
         // clients. This identifies as a normal browser rather than defeating any
         // protection — if a challenge is returned we give up rather than solve it.
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36',
         Accept: 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9',
       },

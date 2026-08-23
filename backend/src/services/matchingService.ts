@@ -46,8 +46,12 @@ export class MatchingService {
     const keyData = {
       targetDegreeLevel: profile.targetDegreeLevel || '',
       fieldOfStudy: (profile.fieldOfStudy || '').toLowerCase().trim(),
-      preferredFields: parseJsonField(profile.preferredFields, []).map((f: string) => f.toLowerCase().trim()).sort(),
-      targetCountries: parseJsonField(profile.targetCountries, []).map((c: string) => c.toLowerCase().trim()).sort(),
+      preferredFields: parseJsonField(profile.preferredFields, [])
+        .map((f: string) => f.toLowerCase().trim())
+        .sort(),
+      targetCountries: parseJsonField(profile.targetCountries, [])
+        .map((c: string) => c.toLowerCase().trim())
+        .sort(),
       gpa: profile.gpa !== undefined && profile.gpa !== null ? Number(profile.gpa) : null,
       maxGpa: profile.maxGpa !== undefined && profile.maxGpa !== null ? Number(profile.maxGpa) : 4.0,
       nationality: (profile.nationality || '').toLowerCase().trim(),
@@ -81,7 +85,8 @@ export class MatchingService {
     const warnings: string[] = [];
     const recommendations: string[] = [];
 
-    const disclaimer = 'AI estimate for discovery and planning purposes only. It does NOT constitute guaranteed official eligibility or an admission decision. Official requirements must be verified with the scholarship provider.';
+    const disclaimer =
+      'AI estimate for discovery and planning purposes only. It does NOT constitute guaranteed official eligibility or an admission decision. Official requirements must be verified with the scholarship provider.';
     warnings.push(disclaimer);
 
     // Parse scholarship criteria
@@ -90,9 +95,10 @@ export class MatchingService {
     const eligibleNationalities: string[] = parseJsonField(scholarship.eligibleNationalities, []);
     const languageRequirements: Record<string, any> = parseJsonField(scholarship.languageRequirements, {});
     const requiredDocuments: string[] = parseJsonField(scholarship.requiredDocuments, []);
-    const minGpa = scholarship.minGpa !== null && scholarship.minGpa !== undefined && !isNaN(Number(scholarship.minGpa))
-      ? Number(scholarship.minGpa)
-      : null;
+    const minGpa =
+      scholarship.minGpa !== null && scholarship.minGpa !== undefined && !isNaN(Number(scholarship.minGpa))
+        ? Number(scholarship.minGpa)
+        : null;
     const maxGpaScale = scholarship.maxGpaScale ? Number(scholarship.maxGpaScale) : 4.0;
 
     // Parse student profile attributes
@@ -102,17 +108,20 @@ export class MatchingService {
     const studentTargetCountries: string[] = parseJsonField(profile?.targetCountries, []);
     const studentNationality = (profile?.nationality || '').trim();
     const studentCountryOfResidence = (profile?.countryOfResidence || '').trim();
-    const studentGpa = profile?.gpa !== null && profile?.gpa !== undefined && !isNaN(Number(profile?.gpa)) && Number(profile?.gpa) > 0
-      ? Number(profile?.gpa)
-      : null;
+    const studentGpa =
+      profile?.gpa !== null && profile?.gpa !== undefined && !isNaN(Number(profile?.gpa)) && Number(profile?.gpa) > 0
+        ? Number(profile?.gpa)
+        : null;
     const studentMaxGpa = profile?.maxGpa ? Number(profile?.maxGpa) : 4.0;
     const studentLanguageTests: Record<string, any> = parseJsonField(profile?.languageTests, {});
 
     // Check for insufficient student profile information
-    const isProfileEmpty = !studentTargetDegree && !studentField && (studentGpa === null);
+    const isProfileEmpty = !studentTargetDegree && !studentField && studentGpa === null;
     if (isProfileEmpty) {
       uncertainCriteria.push('Student profile is incomplete (missing target degree level, field of study, and GPA).');
-      recommendations.push('Complete your Academic Profile with your target degree, GPA, and field of study to get accurate eligibility matches.');
+      recommendations.push(
+        'Complete your Academic Profile with your target degree, GPA, and field of study to get accurate eligibility matches.'
+      );
       return {
         matchScore: 35,
         eligibilityStatus: 'INSUFFICIENT_INFORMATION',
@@ -144,7 +153,11 @@ export class MatchingService {
     // 1. DEGREE LEVEL EVALUATION (weight 26)
     // ----------------------------------------------------
     let degreeMatch = false;
-    if (degreeLevels.length === 0 || degreeLevels.includes('ALL') || degreeLevels.some((d) => d.toLowerCase().includes('all'))) {
+    if (
+      degreeLevels.length === 0 ||
+      degreeLevels.includes('ALL') ||
+      degreeLevels.some((d) => d.toLowerCase().includes('all'))
+    ) {
       degreeMatch = true;
       components.degree = 1;
       matchingCriteria.push(`Degree level: open to all degree levels (${studentTargetDegree || 'any'}).`);
@@ -154,12 +167,16 @@ export class MatchingService {
       matchingCriteria.push(`Target degree level (${studentTargetDegree}) matches this scholarship.`);
     } else if (!studentTargetDegree) {
       components.degree = 0.5;
-      uncertainCriteria.push(`Target degree level is not set in your profile. This scholarship is for: ${degreeLevels.join(', ')}.`);
+      uncertainCriteria.push(
+        `Target degree level is not set in your profile. This scholarship is for: ${degreeLevels.join(', ')}.`
+      );
       recommendations.push(`Set your target degree level to confirm eligibility for ${degreeLevels.join(', ')}.`);
     } else {
       // HARD blocker: a master's award cannot fund a bachelor's applicant.
       components.degree = 0;
-      missingCriteria.push(`Degree level mismatch: this scholarship funds ${degreeLevels.join(' or ')}, but your target is ${studentTargetDegree}.`);
+      missingCriteria.push(
+        `Degree level mismatch: this scholarship funds ${degreeLevels.join(' or ')}, but your target is ${studentTargetDegree}.`
+      );
     }
 
     // ----------------------------------------------------
@@ -167,7 +184,8 @@ export class MatchingService {
     // Handles multiple fields of study, wildcard fields, and fuzzy domain alignment
     // ----------------------------------------------------
     let fieldMatch = false;
-    const isAllFieldsScholarship = fieldsOfStudy.length === 0 ||
+    const isAllFieldsScholarship =
+      fieldsOfStudy.length === 0 ||
       fieldsOfStudy.some((f) => /all fields|any field|open to all|all majors|general/i.test(f));
 
     if (isAllFieldsScholarship) {
@@ -175,33 +193,43 @@ export class MatchingService {
       components.field = 1;
       matchingCriteria.push(`Field of study: open to all majors and academic disciplines.`);
     } else {
-      const studentFieldsToTest = [
-        studentField,
-        ...studentPreferredFields,
-      ].filter(Boolean).map((f) => f.toLowerCase());
+      const studentFieldsToTest = [studentField, ...studentPreferredFields].filter(Boolean).map((f) => f.toLowerCase());
 
       const matchedField = fieldsOfStudy.find((sf) => {
         const sfLower = sf.toLowerCase();
         return studentFieldsToTest.some((pf) => {
-          return sfLower.includes(pf) || pf.includes(sfLower) || (pf === 'cs' && sfLower.includes('computer')) || (pf.includes('tech') && sfLower.includes('tech'));
+          return (
+            sfLower.includes(pf) ||
+            pf.includes(sfLower) ||
+            (pf === 'cs' && sfLower.includes('computer')) ||
+            (pf.includes('tech') && sfLower.includes('tech'))
+          );
         });
       });
 
       if (matchedField) {
         fieldMatch = true;
         components.field = 1;
-        matchingCriteria.push(`Field of study (${studentField || matchedField}) aligns directly with this programme (${matchedField}).`);
+        matchingCriteria.push(
+          `Field of study (${studentField || matchedField}) aligns directly with this programme (${matchedField}).`
+        );
       } else if (studentFieldsToTest.length === 0) {
         components.field = 0.5;
-        uncertainCriteria.push(`Field of study is not set in your profile. This scholarship focuses on: ${fieldsOfStudy.slice(0, 4).join(', ')}.`);
+        uncertainCriteria.push(
+          `Field of study is not set in your profile. This scholarship focuses on: ${fieldsOfStudy.slice(0, 4).join(', ')}.`
+        );
         recommendations.push(`Add your primary major and preferred research fields to your profile.`);
       } else {
         // SOFT signal, not a blocker. Providers routinely accept adjacent and
         // interdisciplinary backgrounds, so this lowers the score and flags a caveat
         // instead of declaring the student ineligible.
         components.field = 0.2;
-        uncertainCriteria.push(`Field focus differs: this scholarship targets [${fieldsOfStudy.slice(0, 4).join(', ')}], while your profile focuses on ${studentField || 'another field'}. Interdisciplinary applicants are often still considered — check the provider's wording.`);
-        recommendations.push(`Confirm whether interdisciplinary applications or your minor subjects qualify under ${fieldsOfStudy[0]}.`);
+        uncertainCriteria.push(
+          `Field focus differs: this scholarship targets [${fieldsOfStudy.slice(0, 4).join(', ')}], while your profile focuses on ${studentField || 'another field'}. Interdisciplinary applicants are often still considered — check the provider's wording.`
+        );
+        recommendations.push(
+          `Confirm whether interdisciplinary applications or your minor subjects qualify under ${fieldsOfStudy[0]}.`
+        );
       }
     }
 
@@ -212,7 +240,10 @@ export class MatchingService {
     const hostCountry = (scholarship.hostCountry || scholarship.country || '').trim();
     if (hostCountry) {
       const isTargetCountry = studentTargetCountries.some(
-        (c) => c.toLowerCase() === hostCountry.toLowerCase() || hostCountry.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(hostCountry.toLowerCase())
+        (c) =>
+          c.toLowerCase() === hostCountry.toLowerCase() ||
+          hostCountry.toLowerCase().includes(c.toLowerCase()) ||
+          c.toLowerCase().includes(hostCountry.toLowerCase())
       );
 
       if (isTargetCountry) {
@@ -248,20 +279,30 @@ export class MatchingService {
           // borderline pass instead of both landing on the same number.
           const headroom = (normalizedStudentGpa - minGpa) / Math.max(0.01, maxGpaScale - minGpa);
           components.gpa = 0.75 + 0.25 * Math.min(1, Math.max(0, headroom));
-          matchingCriteria.push(`Academic performance (${studentGpa}/${studentMaxGpa}) meets the minimum threshold (${minGpa}/${maxGpaScale}).`);
+          matchingCriteria.push(
+            `Academic performance (${studentGpa}/${studentMaxGpa}) meets the minimum threshold (${minGpa}/${maxGpaScale}).`
+          );
         } else {
           // HARD blocker: an explicitly stated minimum was not met.
           gpaMatch = false;
           components.gpa = 0;
-          missingCriteria.push(`Minimum grade not met: this scholarship requires ${minGpa}/${maxGpaScale}, your profile shows ${studentGpa}/${studentMaxGpa}.`);
-          recommendations.push(`Strengthen the application with research output, high GRE/GMAT scores, or work experience — some providers weigh these against the grade cutoff.`);
+          missingCriteria.push(
+            `Minimum grade not met: this scholarship requires ${minGpa}/${maxGpaScale}, your profile shows ${studentGpa}/${studentMaxGpa}.`
+          );
+          recommendations.push(
+            `Strengthen the application with research output, high GRE/GMAT scores, or work experience — some providers weigh these against the grade cutoff.`
+          );
         }
       } else {
         // Missing grade: uncertain, never an automatic rejection.
         gpaMatch = 'UNCERTAIN';
         components.gpa = 0.4;
-        uncertainCriteria.push(`No grade recorded in your profile — this scholarship specifies a minimum of ${minGpa}/${maxGpaScale}.`);
-        recommendations.push(`Add your GPA or percentage marks (with the correct grading scale) to confirm academic eligibility.`);
+        uncertainCriteria.push(
+          `No grade recorded in your profile — this scholarship specifies a minimum of ${minGpa}/${maxGpaScale}.`
+        );
+        recommendations.push(
+          `Add your GPA or percentage marks (with the correct grading scale) to confirm academic eligibility.`
+        );
       }
     } else {
       gpaMatch = 'NOT_REQUIRED';
@@ -274,7 +315,8 @@ export class MatchingService {
     // Handles open-to-all, specific nationality lists, and unknown nationality
     // ----------------------------------------------------
     let nationalityMatch: boolean | 'ALL_ELIGIBLE' | 'UNCERTAIN' = 'ALL_ELIGIBLE';
-    const hasSpecificNationalities = eligibleNationalities.length > 0 &&
+    const hasSpecificNationalities =
+      eligibleNationalities.length > 0 &&
       !eligibleNationalities.some((n) => /all|international|any|global|worldwide/i.test(n));
 
     if (!hasSpecificNationalities) {
@@ -289,7 +331,9 @@ export class MatchingService {
       if (studentNats.length === 0) {
         nationalityMatch = 'UNCERTAIN';
         components.nationality = 0.4;
-        uncertainCriteria.push(`Nationality is not set in your profile. This scholarship is restricted to citizens of: ${eligibleNationalities.join(', ')}.`);
+        uncertainCriteria.push(
+          `Nationality is not set in your profile. This scholarship is restricted to citizens of: ${eligibleNationalities.join(', ')}.`
+        );
         recommendations.push(`Add your nationality and country of residence to your profile.`);
       } else {
         const isEligibleNat = eligibleNationalities.some((en) => {
@@ -300,12 +344,16 @@ export class MatchingService {
         if (isEligibleNat) {
           nationalityMatch = true;
           components.nationality = 1;
-          matchingCriteria.push(`Nationality confirmed eligible (${studentNationality || studentCountryOfResidence} is on the eligible list).`);
+          matchingCriteria.push(
+            `Nationality confirmed eligible (${studentNationality || studentCountryOfResidence} is on the eligible list).`
+          );
         } else {
           // HARD blocker: citizenship restrictions are absolute.
           nationalityMatch = false;
           components.nationality = 0;
-          missingCriteria.push(`Nationality restriction: this scholarship is limited to citizens of [${eligibleNationalities.join(', ')}]. Your profile lists ${studentNationality || studentCountryOfResidence}.`);
+          missingCriteria.push(
+            `Nationality restriction: this scholarship is limited to citizens of [${eligibleNationalities.join(', ')}]. Your profile lists ${studentNationality || studentCountryOfResidence}.`
+          );
         }
       }
     }
@@ -335,7 +383,9 @@ export class MatchingService {
           // score and raises an action rather than disqualifying outright.
           languageMatch = false;
           components.language = 0.15;
-          uncertainCriteria.push(`English score below the stated cutoff: IELTS ${reqIelts} required, your profile records ${studentIelts}. A retake before the deadline would resolve this.`);
+          uncertainCriteria.push(
+            `English score below the stated cutoff: IELTS ${reqIelts} required, your profile records ${studentIelts}. A retake before the deadline would resolve this.`
+          );
           recommendations.push(`Book an IELTS retake targeting at least ${reqIelts} before the application deadline.`);
         }
       } else if (reqToefl && studentToefl !== null) {
@@ -346,14 +396,20 @@ export class MatchingService {
         } else {
           languageMatch = false;
           components.language = 0.15;
-          uncertainCriteria.push(`English score below the stated cutoff: TOEFL ${reqToefl} required, your profile records ${studentToefl}. A retake before the deadline would resolve this.`);
+          uncertainCriteria.push(
+            `English score below the stated cutoff: TOEFL ${reqToefl} required, your profile records ${studentToefl}. A retake before the deadline would resolve this.`
+          );
           recommendations.push(`Retake TOEFL targeting at least ${reqToefl}, or check for an institutional waiver.`);
         }
       } else {
         languageMatch = 'UNCERTAIN';
         components.language = 0.4;
-        uncertainCriteria.push(`English requirement unverified — this scholarship specifies ${reqIelts ? `IELTS ${reqIelts}` : ''}${reqIelts && reqToefl ? ' or ' : ''}${reqToefl ? `TOEFL ${reqToefl}` : ''}, but no language scores are recorded in your profile.`);
-        recommendations.push(`Check whether your medium of instruction qualifies for an English waiver, or schedule an IELTS/TOEFL test.`);
+        uncertainCriteria.push(
+          `English requirement unverified — this scholarship specifies ${reqIelts ? `IELTS ${reqIelts}` : ''}${reqIelts && reqToefl ? ' or ' : ''}${reqToefl ? `TOEFL ${reqToefl}` : ''}, but no language scores are recorded in your profile.`
+        );
+        recommendations.push(
+          `Check whether your medium of instruction qualifies for an English waiver, or schedule an IELTS/TOEFL test.`
+        );
       }
     } else {
       languageMatch = 'NOT_SPECIFIED';
@@ -369,9 +425,13 @@ export class MatchingService {
       const now = new Date();
       const diffDays = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       if (diffDays < 0) {
-        warnings.push(`The application deadline for this intake passed on ${deadlineDate.toLocaleDateString()}. Confirm if next year's cycle is accepting applications.`);
+        warnings.push(
+          `The application deadline for this intake passed on ${deadlineDate.toLocaleDateString()}. Confirm if next year's cycle is accepting applications.`
+        );
       } else if (diffDays <= 14) {
-        warnings.push(`Urgent deadline: Only ${diffDays} days remaining until the cutoff date (${deadlineDate.toLocaleDateString()}). Submit required documents promptly.`);
+        warnings.push(
+          `Urgent deadline: Only ${diffDays} days remaining until the cutoff date (${deadlineDate.toLocaleDateString()}). Submit required documents promptly.`
+        );
       } else if (diffDays <= 45) {
         warnings.push(`Approaching deadline: ${diffDays} days remaining to finalize your application package.`);
       }
@@ -507,9 +567,18 @@ export class MatchingService {
       });
 
       if (cachedMatch && cachedMatch.profileHash === currentProfileHash) {
-        const matchingCriteria = parseJsonField(cachedMatch.matchingCriteria, parseJsonField(cachedMatch.matchReasons, []));
-        const missingCriteria = parseJsonField(cachedMatch.missingCriteria, parseJsonField(cachedMatch.missingReqs, []));
-        const uncertainCriteria = parseJsonField(cachedMatch.uncertainCriteria, parseJsonField(cachedMatch.concerns, []));
+        const matchingCriteria = parseJsonField(
+          cachedMatch.matchingCriteria,
+          parseJsonField(cachedMatch.matchReasons, [])
+        );
+        const missingCriteria = parseJsonField(
+          cachedMatch.missingCriteria,
+          parseJsonField(cachedMatch.missingReqs, [])
+        );
+        const uncertainCriteria = parseJsonField(
+          cachedMatch.uncertainCriteria,
+          parseJsonField(cachedMatch.concerns, [])
+        );
         const recommendations = parseJsonField(cachedMatch.recommendations, parseJsonField(cachedMatch.nextSteps, []));
         const warnings = parseJsonField(cachedMatch.warnings, [
           'AI estimate for discovery and planning purposes only. Official requirements must be verified with the scholarship provider.',
@@ -535,7 +604,8 @@ export class MatchingService {
           warnings,
           recommendations,
           breakdown,
-          disclaimer: 'AI estimate for discovery and planning purposes only. Official requirements must be verified with the scholarship provider.',
+          disclaimer:
+            'AI estimate for discovery and planning purposes only. Official requirements must be verified with the scholarship provider.',
           profileHash: cachedMatch.profileHash || currentProfileHash,
           isCached: true,
           calculatedAt: cachedMatch.calculatedAt.toISOString(),

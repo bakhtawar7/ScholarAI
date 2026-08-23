@@ -122,8 +122,8 @@ if (require.main === module) {
   // Same reasoning for outbound mail and error reporting: silence here is ambiguous, so
   // state which transport is live rather than letting a missing key look like success.
   logger.info(`Email: ${EmailService.describeTransport()}`);
-  if (!EmailService.isConfigured()) {
-    logger.warn('No email transport configured — transactional emails are logged, not sent.');
+  for (const warning of EmailService.configWarnings()) {
+    logger.warn(`Email configuration: ${warning}`);
   }
   if (!isSentryEnabled()) {
     logger.warn('SENTRY_DSN is unset — errors are logged locally only.');

@@ -103,7 +103,9 @@ async function main() {
     res.queriesIssued.slice(0, 3).forEach((q) => console.log(`     - ${q.slice(0, 110)}`));
     console.log(`  external hits        : ${res.externalHits}`);
     console.log(`  source pages read    : ${res.pagesRetrieved} (robots-skipped: ${res.pagesBlockedByRobots})`);
-    console.log(`  extracted / rejected : kept ${res.items.filter((i) => i.source === 'LIVE_EXTERNAL').length}, rejected ${res.rejected}`);
+    console.log(
+      `  extracted / rejected : kept ${res.items.filter((i) => i.source === 'LIVE_EXTERNAL').length}, rejected ${res.rejected}`
+    );
     console.log(`  DB created / updated : ${res.created} / ${res.updated}`);
     console.log(`  usedExternalSearch   : ${res.usedExternalSearch}`);
     if (res.notices.length) res.notices.forEach((n) => console.log(`  NOTICE: ${n}`));
@@ -123,13 +125,19 @@ async function main() {
       console.log(`      country  : ${item.hostCountry} | funding: ${item.fundingType}`);
       console.log(`      deadline : ${item.deadline || 'not stated on source page'}`);
       console.log(`      url      : ${item.officialUrl.slice(0, 100)}`);
-      console.log(`      verify   : ${item.verificationStatus} | match: ${item.matchScore ?? 'n/a'} | new: ${item.isNew}`);
+      console.log(
+        `      verify   : ${item.verificationStatus} | match: ${item.matchScore ?? 'n/a'} | new: ${item.isNew}`
+      );
       if (item.unknownFields.length) console.log(`      unknown  : ${item.unknownFields.join(', ')}`);
     });
 
     // The core assertion: a real outbound search was issued for this query.
     assert(res.queriesIssued.length > 0, 'issued at least one external search query');
-    assert(res.externalHits > 0 || Boolean(res.notices.length), 'external search returned hits (or explained why not)', res.notices);
+    assert(
+      res.externalHits > 0 || Boolean(res.notices.length),
+      'external search returned hits (or explained why not)',
+      res.notices
+    );
     // Every live item must carry a source URL — no hallucinated entries.
     assert(
       live.every((i) => /^https?:\/\//.test(i.officialUrl)),
@@ -159,7 +167,11 @@ async function main() {
   );
 
   // Alias must resolve to the same pipeline.
-  const alias = await executeToolCall('searchLiveScholarships', { query: 'DAAD scholarship Germany', limit: 2 }, userId);
+  const alias = await executeToolCall(
+    'searchLiveScholarships',
+    { query: 'DAAD scholarship Germany', limit: 2 },
+    userId
+  );
   assert(alias && !alias.error, 'searchLiveScholarships alias resolves to the discovery pipeline', alias?.error);
 
   const rowsAfter = await prisma.scholarship.count();
@@ -174,7 +186,9 @@ async function main() {
   });
   console.log(`\nScholarshipSource rows from live search: ${recentSources.length}`);
   recentSources.forEach((s) => {
-    console.log(`  - ${s.sourceName} -> "${s.scholarship.title.slice(0, 55)}" (${s.scholarship.verificationStatus}, isDemo=${s.scholarship.isDemo})`);
+    console.log(
+      `  - ${s.sourceName} -> "${s.scholarship.title.slice(0, 55)}" (${s.scholarship.verificationStatus}, isDemo=${s.scholarship.isDemo})`
+    );
   });
 
   /**

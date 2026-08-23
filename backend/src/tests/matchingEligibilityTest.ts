@@ -53,7 +53,11 @@ async function runMatchingEligibilityTests() {
     const result = MatchingService.evaluateCompatibility(studentProfile, scholarship);
 
     assert(
-      result.uncertainCriteria.some((u) => u.toLowerCase().includes('gpa not provided')),
+      /no grade recorded|gpa not provided|no gpa/i.test(result.uncertainCriteria.join(' ')),
+      // Matched on concept rather than exact copy: this assertion previously required the
+      // literal string "gpa not provided", which stopped matching when the message was
+      // rewritten into the current actionable wording. The alternation keeps it honest
+      // about the requirement while tolerating a future rewording.
       'Edge Case 1a: Missing GPA is properly captured in uncertainCriteria',
       result.uncertainCriteria
     );
@@ -107,7 +111,9 @@ async function runMatchingEligibilityTests() {
     const result = MatchingService.evaluateCompatibility(studentProfile, scholarship);
 
     assert(
-      result.uncertainCriteria.some((u) => u.toLowerCase().includes('english language') || u.toLowerCase().includes('ielts')),
+      result.uncertainCriteria.some(
+        (u) => u.toLowerCase().includes('english language') || u.toLowerCase().includes('ielts')
+      ),
       'Edge Case 2a: Missing IELTS is captured in uncertainCriteria',
       result.uncertainCriteria
     );
@@ -149,7 +155,9 @@ async function runMatchingEligibilityTests() {
 
     const resultOpen = MatchingService.evaluateCompatibility(studentProfile, openScholarship);
     assert(
-      resultOpen.matchingCriteria.some((m) => m.toLowerCase().includes('open to all') || m.toLowerCase().includes('worldwide')),
+      resultOpen.matchingCriteria.some(
+        (m) => m.toLowerCase().includes('open to all') || m.toLowerCase().includes('worldwide')
+      ),
       'Edge Case 3a: Open nationality properly credited in matchingCriteria',
       resultOpen.matchingCriteria
     );
@@ -188,7 +196,9 @@ async function runMatchingEligibilityTests() {
     };
     const resultUnspecified = MatchingService.evaluateCompatibility(unspecifiedNatProfile, restrictedScholarship);
     assert(
-      resultUnspecified.uncertainCriteria.some((u) => u.toLowerCase().includes('nationality is not specified')),
+      /nationality is not (set|specified)/i.test(resultUnspecified.uncertainCriteria.join(' ')),
+      // Same reason as Edge Case 1a: the literal "nationality is not specified" was
+      // reworded to "Nationality is not set in your profile".
       'Edge Case 3e: Unspecified nationality on restricted scholarship is captured in uncertainCriteria',
       resultUnspecified.uncertainCriteria
     );
@@ -277,7 +287,9 @@ async function runMatchingEligibilityTests() {
     const result = MatchingService.evaluateCompatibility(studentProfile, noGpaScholarship);
 
     assert(
-      result.matchingCriteria.some((m) => m.toLowerCase().includes('no strict minimum gpa') || m.toLowerCase().includes('holistic')),
+      result.matchingCriteria.some(
+        (m) => m.toLowerCase().includes('no strict minimum gpa') || m.toLowerCase().includes('holistic')
+      ),
       'Edge Case 5a: No GPA requirement recorded as positive holistic matching criterion',
       result.matchingCriteria
     );
@@ -312,20 +324,14 @@ async function runMatchingEligibilityTests() {
     const hash1 = MatchingService.generateProfileHash(profileA);
     const hash2 = MatchingService.generateProfileHash(profileA);
 
-    assert(
-      hash1 === hash2 && hash1.length === 64,
-      'Test 6a: Profile hash is deterministic and 64-char SHA256',
-      { hash1 }
-    );
+    assert(hash1 === hash2 && hash1.length === 64, 'Test 6a: Profile hash is deterministic and 64-char SHA256', {
+      hash1,
+    });
 
     const profileB = { ...profileA, gpa: 3.9 }; // Modified GPA
     const hash3 = MatchingService.generateProfileHash(profileB);
 
-    assert(
-      hash1 !== hash3,
-      'Test 6b: Profile hash changes when key profile attributes change',
-      { hash1, hash3 }
-    );
+    assert(hash1 !== hash3, 'Test 6b: Profile hash changes when key profile attributes change', { hash1, hash3 });
   }
 
   // ----------------------------------------------------
@@ -351,8 +357,16 @@ async function runMatchingEligibilityTests() {
     const result = MatchingService.evaluateCompatibility(studentProfile, scholarship);
 
     // Verify all 7 required schema fields
-    assert(typeof result.matchScore === 'number' && result.matchScore >= 0 && result.matchScore <= 100, 'Schema: matchScore is valid number (0-100)');
-    assert(['ELIGIBLE', 'POTENTIALLY_ELIGIBLE', 'NOT_ELIGIBLE', 'INSUFFICIENT_INFORMATION'].includes(result.eligibilityStatus), 'Schema: eligibilityStatus matches enum');
+    assert(
+      typeof result.matchScore === 'number' && result.matchScore >= 0 && result.matchScore <= 100,
+      'Schema: matchScore is valid number (0-100)'
+    );
+    assert(
+      ['ELIGIBLE', 'POTENTIALLY_ELIGIBLE', 'NOT_ELIGIBLE', 'INSUFFICIENT_INFORMATION'].includes(
+        result.eligibilityStatus
+      ),
+      'Schema: eligibilityStatus matches enum'
+    );
     assert(Array.isArray(result.matchingCriteria), 'Schema: matchingCriteria is array');
     assert(Array.isArray(result.missingCriteria), 'Schema: missingCriteria is array');
     assert(Array.isArray(result.uncertainCriteria), 'Schema: uncertainCriteria is array');
@@ -360,7 +374,7 @@ async function runMatchingEligibilityTests() {
     assert(Array.isArray(result.recommendations), 'Schema: recommendations is array');
     assert(
       result.warnings.some((w) => w.toLowerCase().includes('ai estimate') && w.toLowerCase().includes('not')) ||
-      result.disclaimer.toLowerCase().includes('not constitute guaranteed'),
+        result.disclaimer.toLowerCase().includes('not constitute guaranteed'),
       'Notice: AI disclaimer is explicitly included to avoid guaranteeing official eligibility',
       result.disclaimer
     );

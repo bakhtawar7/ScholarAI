@@ -50,7 +50,8 @@ async function ddgSearch(query: string) {
   console.log(`  HTTP ${res.status}, ${html.length} bytes`);
 
   const hits: Array<{ title: string; url: string; snippet: string }> = [];
-  const blockRe = /<div class="result[^"]*results_links[^"]*"[\s\S]*?(?=<div class="result[^"]*results_links|<\/body>)/g;
+  const blockRe =
+    /<div class="result[^"]*results_links[^"]*"[\s\S]*?(?=<div class="result[^"]*results_links|<\/body>)/g;
   const blocks = html.match(blockRe) || [];
   console.log(`  result blocks matched: ${blocks.length}`);
 
@@ -87,7 +88,7 @@ async function fetchPage(url: string) {
 
 async function main() {
   const queries = [
-    "fully funded computer science masters scholarship Europe 2026 2027 international students deadline",
+    'fully funded computer science masters scholarship Europe 2026 2027 international students deadline',
     'DAAD scholarship 2027 official application',
   ];
 

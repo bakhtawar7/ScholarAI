@@ -84,7 +84,14 @@ export async function runWorkflow(workflowKey: string, options: RunOptions = {})
         workflowKey,
         lockKey: options.lockKey,
       });
-      return { runId: null, workflowKey, status: 'SKIPPED', attempts: 0, durationMs: 0, error: 'Occurrence already claimed' };
+      return {
+        runId: null,
+        workflowKey,
+        status: 'SKIPPED',
+        attempts: 0,
+        durationMs: 0,
+        error: 'Occurrence already claimed',
+      };
     }
     logger.error('Could not create workflow run record', { workflowKey, message: err?.message });
     return { runId: null, workflowKey, status: 'FAILED', attempts: 0, durationMs: 0, error: err?.message };
@@ -119,7 +126,14 @@ export async function runWorkflow(workflowKey: string, options: RunOptions = {})
         });
 
         logger.info(`Workflow "${definition.key}" succeeded`, { attempt, durationMs, trigger });
-        return { runId: run.id, workflowKey: definition.key, status: 'SUCCESS', attempts: attempt, durationMs, metrics };
+        return {
+          runId: run.id,
+          workflowKey: definition.key,
+          status: 'SUCCESS',
+          attempts: attempt,
+          durationMs,
+          metrics,
+        };
       } catch (err: any) {
         lastError = err;
         const willRetry = attempt < definition.maxAttempts;

@@ -11,12 +11,43 @@ import {
   manualReviewSchema,
   customEligibilitySchema,
   verificationQueueQuerySchema,
+  personalisedQuerySchema,
+  countryDiscoverySchema,
 } from '../validators/scholarshipValidator';
 
 const router = Router();
 
 // Metadata facets for the search & filter explorer (public, cached server-side).
 router.get('/filters', ScholarshipController.getFilters);
+
+/**
+ * Personalised default view, grouped by the student's own country / target countries /
+ * elsewhere. Requires a session because every section is ranked against their profile.
+ *
+ * Declared before '/:id' so "for-me" is not captured as a scholarship id.
+ */
+router.get('/for-me', authenticateToken, validateRequest(personalisedQuerySchema), ScholarshipController.forMe);
+
+/**
+ * On-demand live search for one country.
+ *
+ * Costs a web search plus model calls per call, so it shares the AI-heavy limiter and gets
+ * a tighter bucket of its own — a student repeatedly clicking "search my country" must not
+ * be able to drain the search quota for everyone.
+ */
+router.post(
+  '/discover/country',
+  authenticateToken,
+  aiHeavyRateLimiter,
+  createRateLimiter({
+    bucket: 'country-discovery',
+    windowMs: 10 * 60_000,
+    maxRequests: Number(process.env.RATE_LIMIT_COUNTRY_DISCOVERY_MAX) || 4,
+    message: 'Country searches are limited to a few per 10 minutes. Please wait before searching again.',
+  }),
+  validateRequest(countryDiscoverySchema),
+  ScholarshipController.discoverForCountry
+);
 
 /**
  * Verification queue and audit trail expose crawler payloads, source URLs and
@@ -91,8 +122,26 @@ router.get('/:id', optionalAuthenticateToken, validateRequest(scholarshipIdParam
  * Catalogue mutation is admin-only. Any authenticated student could previously
  * create, edit or delete scholarship records for every user of the platform.
  */
-router.post('/', authenticateToken, requireAdmin, validateRequest(scholarshipCreateSchema), ScholarshipController.create);
-router.put('/:id', authenticateToken, requireAdmin, validateRequest(scholarshipUpdateSchema), ScholarshipController.update);
-router.delete('/:id', authenticateToken, requireAdmin, validateRequest(scholarshipIdParamSchema), ScholarshipController.delete);
+router.post(
+  '/',
+  authenticateToken,
+  requireAdmin,
+  validateRequest(scholarshipCreateSchema),
+  ScholarshipController.create
+);
+router.put(
+  '/:id',
+  authenticateToken,
+  requireAdmin,
+  validateRequest(scholarshipUpdateSchema),
+  ScholarshipController.update
+);
+router.delete(
+  '/:id',
+  authenticateToken,
+  requireAdmin,
+  validateRequest(scholarshipIdParamSchema),
+  ScholarshipController.delete
+);
 
 export default router;

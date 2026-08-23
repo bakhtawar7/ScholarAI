@@ -5,6 +5,68 @@ import { MatchingService } from '../services/matchingService';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export class ScholarshipController {
+  /**
+   * The personalised default view: scholarships grouped by the student's own country,
+   * their target countries, and everywhere else.
+   */
+  static async forMe(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      // personalisedQuerySchema has already coerced and bounded this, so a plain read is
+      // enough — undefined falls back to the service default.
+      const { perSection } = req.query as { perSection?: number };
+      const result = await ScholarshipService.getPersonalisedSections(req.user!.id, { perSection });
+      res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Runs a live scholarship search scoped to one country, on demand.
+   *
+   * Exists because the seeded catalogue is entirely study-abroad destinations, so a
+   * student's home-country section starts empty and no amount of querying will fill it —
+   * the records have to be discovered first.
+   *
+   * Expensive (a web search plus model calls), so it sits behind the AI-heavy rate limiter
+   * and the country is bounded by the validator. It never throws on a failed search:
+   * `usedLiveExternalSearch: false` plus a notice is a legitimate, informative outcome.
+   */
+  static async discoverForCountry(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { country, degreeLevel, fieldOfStudy } = req.body as {
+        country: string;
+        degreeLevel?: string;
+        fieldOfStudy?: string;
+      };
+
+      const { ScholarshipDiscoveryService } = await import('../services/discovery/scholarshipDiscoveryService');
+
+      // Phrased the way the extraction prompt expects: a natural-language request.
+      const parts = [
+        fieldOfStudy ? `${fieldOfStudy}` : '',
+        degreeLevel ? `${degreeLevel.toLowerCase()}` : '',
+        'scholarships for students in',
+        country,
+      ].filter(Boolean);
+
+      const discovery = await ScholarshipDiscoveryService.discover(parts.join(' '), req.user!.id, { limit: 10 });
+
+      res.status(200).json({
+        country,
+        usedLiveExternalSearch: discovery.usedExternalSearch,
+        searchProvider: discovery.searchProvider,
+        created: discovery.created,
+        updated: discovery.updated,
+        rejected: discovery.rejected,
+        notices: discovery.notices,
+        count: discovery.items.length,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async search(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       // Query params are already validated, coerced and bounded by scholarshipQuerySchema.

@@ -1,9 +1,5 @@
 import { Router } from 'express';
-import {
-  AutomationController,
-  triggerWorkflowSchema,
-  runsQuerySchema,
-} from '../controllers/automationController';
+import { AutomationController, triggerWorkflowSchema, runsQuerySchema } from '../controllers/automationController';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { createRateLimiter } from '../middleware/rateLimiter';

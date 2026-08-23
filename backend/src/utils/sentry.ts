@@ -102,9 +102,7 @@ function scrubEvent(event: Sentry.Event): Sentry.Event | null {
 
     if (event.request.query_string) {
       event.request.query_string =
-        typeof event.request.query_string === 'object'
-          ? scrubObject(event.request.query_string)
-          : '[redacted]';
+        typeof event.request.query_string === 'object' ? scrubObject(event.request.query_string) : '[redacted]';
     }
   }
 
@@ -156,7 +154,7 @@ export function initSentry(): void {
 
   try {
     Sentry.init({
-      dsn:"https://d33e1142cb23e74539567dbeb05ddab8@o4511914010607616.ingest.us.sentry.io/4511950794129408",
+      dsn: 'https://d33e1142cb23e74539567dbeb05ddab8@o4511914010607616.ingest.us.sentry.io/4511950794129408',
       environment: config.sentry.environment,
       release: config.sentry.release,
       tracesSampleRate: config.sentry.tracesSampleRate,

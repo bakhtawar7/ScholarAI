@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to the same branch makes an in-flight run obsolete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — typecheck, lint, tests
+    runs-on: ubuntu-latest
+    # Runs on Linux specifically: the npm scripts used to hardcode Windows
+    # node_modules\.bin\ paths, so a green run here is what proves they stay portable.
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      # Deterministic, throwaway configuration. Nothing here reaches a real service:
+      # every AI, search and email feature has an offline fallback, and CI must never
+      # depend on a live provider or a secret.
+      DATABASE_URL: file:./ci.db
+      JWT_SECRET: ci-only-secret-not-used-anywhere-else-000000
+      ADMIN_EMAILS: admin@example.com
+      NODE_ENV: test
+      AUTOMATION_ENABLED: 'false'
+      URL_CHECK_ENABLED: 'false'
+      EXTERNAL_DISCOVERY_ENABLED: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Apply migrations
+        # Also the regression test for the migration files themselves: 0_init once had
+        # CLI banner text appended to it, and migration_lock.toml was missing entirely,
+        # which broke this command on every fresh database.
+        run: npm run prisma:deploy
+
+      - name: Seed
+        run: npm run prisma:seed
+
+      - name: Check for duplicate scholarships
+        run: npm run check:duplicates
+
+      - name: Test suites
+        # Offline suites only. --include-network calls live search providers and is
+        # deliberately left out of CI.
+        run: npm test
+
+  frontend:
+    name: Frontend — typecheck, lint, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Build
+        run: npm run build

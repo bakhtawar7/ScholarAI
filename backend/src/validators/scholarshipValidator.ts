@@ -103,10 +103,10 @@ export const scholarshipCreateSchema = z.object({
   body: z
     .object(scholarshipBodyShape)
     .strip()
-    .refine(
-      (d) => d.minGpa === undefined || d.minGpa <= d.maxGpaScale,
-      { message: 'minGpa cannot exceed maxGpaScale', path: ['minGpa'] }
-    ),
+    .refine((d) => d.minGpa === undefined || d.minGpa <= d.maxGpaScale, {
+      message: 'minGpa cannot exceed maxGpaScale',
+      path: ['minGpa'],
+    }),
 });
 
 /** Update accepts any subset of the create shape. */
@@ -152,6 +152,38 @@ export const customEligibilitySchema = z.object({
         })
         .strip()
         .optional(),
+    })
+    .strip(),
+});
+
+/** Query params for the personalised sectioned view. */
+export const personalisedQuerySchema = z.object({
+  query: z
+    .object({
+      /** Cards per section. Bounded so a client cannot request the whole catalogue at once. */
+      perSection: z.coerce.number().int().min(3).max(24).optional(),
+    })
+    .strip(),
+});
+
+/**
+ * Body for an on-demand, country-scoped live search.
+ *
+ * The country string reaches a search provider and a model prompt, so it is bounded and
+ * restricted to characters that appear in real place names — no newlines, no punctuation
+ * that could be used to steer the extraction prompt.
+ */
+export const countryDiscoverySchema = z.object({
+  body: z
+    .object({
+      country: z
+        .string()
+        .trim()
+        .min(2, 'A country is required')
+        .max(60, 'Country name is too long')
+        .regex(/^[\p{L}\p{M}\s'.()-]+$/u, 'Enter a country name without special characters'),
+      degreeLevel: z.enum(DEGREE_LEVELS).optional(),
+      fieldOfStudy: z.string().trim().max(120).optional(),
     })
     .strip(),
 });

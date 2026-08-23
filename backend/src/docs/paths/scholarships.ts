@@ -9,30 +9,278 @@ const FUNDING_TYPES = ['FULL_FUNDING', 'PARTIAL_FUNDING', 'TUITION_ONLY', 'STIPE
  * `funding`/`fundingType`, `verifiedStatus`/`verificationStatus`). Both are honoured.
  */
 const searchQueryParameters = [
-  { name: 'q', in: 'query', schema: { type: 'string', maxLength: 200 }, description: 'Free-text search across title, provider, university, organisation, host country, fields of study and eligibility text.' },
-  { name: 'hostCountry', in: 'query', schema: { type: 'string', maxLength: 100 }, description: 'Host country. Alias of `country`.' },
-  { name: 'country', in: 'query', schema: { type: 'string', maxLength: 100 }, description: 'Host country. Alias of `hostCountry`.' },
-  { name: 'degreeLevel', in: 'query', schema: { type: 'string', enum: DEGREE_LEVELS }, description: 'Degree level. Alias of `degree`.' },
-  { name: 'degree', in: 'query', schema: { type: 'string', enum: DEGREE_LEVELS }, description: 'Degree level. Alias of `degreeLevel`.' },
-  { name: 'field', in: 'query', schema: { type: 'string', maxLength: 100 }, description: 'Field of study. Alias of `fieldsOfStudy`.' },
-  { name: 'fieldsOfStudy', in: 'query', schema: { type: 'string', maxLength: 100 }, description: 'Field of study. Alias of `field`.' },
-  { name: 'fundingType', in: 'query', schema: { type: 'string', enum: FUNDING_TYPES }, description: 'Funding type. Alias of `funding`.' },
-  { name: 'funding', in: 'query', schema: { type: 'string', enum: FUNDING_TYPES }, description: 'Funding type. Alias of `fundingType`.' },
-  { name: 'deadline', in: 'query', schema: { type: 'string', maxLength: 50 }, description: 'Deadline window shorthand.' },
-  { name: 'deadlineBefore', in: 'query', schema: { type: 'string', maxLength: 40 }, description: 'Only deadlines on or before this ISO date.' },
-  { name: 'deadlineAfter', in: 'query', schema: { type: 'string', maxLength: 40 }, description: 'Only deadlines on or after this ISO date.' },
-  { name: 'nationality', in: 'query', schema: { type: 'string', maxLength: 100 }, description: 'Restrict to scholarships open to this nationality.' },
-  { name: 'language', in: 'query', schema: { type: 'string', maxLength: 50 }, description: 'Language requirement filter.' },
-  { name: 'minGpa', in: 'query', schema: { type: 'string', maxLength: 10 }, description: 'Exclude scholarships demanding more than this GPA.' },
-  { name: 'verificationStatus', in: 'query', schema: { type: 'string', maxLength: 40 }, description: 'Verification status. Alias of `verifiedStatus`.' },
-  { name: 'verifiedStatus', in: 'query', schema: { type: 'string', maxLength: 40 }, description: 'Verification status. Alias of `verificationStatus`.' },
-  { name: 'isDemo', in: 'query', schema: { type: 'string', maxLength: 10 }, description: 'Filter seeded demo records in or out.' },
-  { name: 'sortBy', in: 'query', schema: { type: 'string', maxLength: 40 }, description: 'Sort key. Match-based sorting requires a session and is windowed to the most recent matches.' },
+  {
+    name: 'q',
+    in: 'query',
+    schema: { type: 'string', maxLength: 200 },
+    description:
+      'Free-text search across title, provider, university, organisation, host country, fields of study and eligibility text.',
+  },
+  {
+    name: 'hostCountry',
+    in: 'query',
+    schema: { type: 'string', maxLength: 100 },
+    description: 'Host country. Alias of `country`.',
+  },
+  {
+    name: 'country',
+    in: 'query',
+    schema: { type: 'string', maxLength: 100 },
+    description: 'Host country. Alias of `hostCountry`.',
+  },
+  {
+    name: 'degreeLevel',
+    in: 'query',
+    schema: { type: 'string', enum: DEGREE_LEVELS },
+    description: 'Degree level. Alias of `degree`.',
+  },
+  {
+    name: 'degree',
+    in: 'query',
+    schema: { type: 'string', enum: DEGREE_LEVELS },
+    description: 'Degree level. Alias of `degreeLevel`.',
+  },
+  {
+    name: 'field',
+    in: 'query',
+    schema: { type: 'string', maxLength: 100 },
+    description: 'Field of study. Alias of `fieldsOfStudy`.',
+  },
+  {
+    name: 'fieldsOfStudy',
+    in: 'query',
+    schema: { type: 'string', maxLength: 100 },
+    description: 'Field of study. Alias of `field`.',
+  },
+  {
+    name: 'fundingType',
+    in: 'query',
+    schema: { type: 'string', enum: FUNDING_TYPES },
+    description: 'Funding type. Alias of `funding`.',
+  },
+  {
+    name: 'funding',
+    in: 'query',
+    schema: { type: 'string', enum: FUNDING_TYPES },
+    description: 'Funding type. Alias of `fundingType`.',
+  },
+  {
+    name: 'deadline',
+    in: 'query',
+    schema: { type: 'string', maxLength: 50 },
+    description: 'Deadline window shorthand.',
+  },
+  {
+    name: 'deadlineBefore',
+    in: 'query',
+    schema: { type: 'string', maxLength: 40 },
+    description: 'Only deadlines on or before this ISO date.',
+  },
+  {
+    name: 'deadlineAfter',
+    in: 'query',
+    schema: { type: 'string', maxLength: 40 },
+    description: 'Only deadlines on or after this ISO date.',
+  },
+  {
+    name: 'nationality',
+    in: 'query',
+    schema: { type: 'string', maxLength: 100 },
+    description: 'Restrict to scholarships open to this nationality.',
+  },
+  {
+    name: 'language',
+    in: 'query',
+    schema: { type: 'string', maxLength: 50 },
+    description: 'Language requirement filter.',
+  },
+  {
+    name: 'minGpa',
+    in: 'query',
+    schema: { type: 'string', maxLength: 10 },
+    description: 'Exclude scholarships demanding more than this GPA.',
+  },
+  {
+    name: 'verificationStatus',
+    in: 'query',
+    schema: { type: 'string', maxLength: 40 },
+    description: 'Verification status. Alias of `verifiedStatus`.',
+  },
+  {
+    name: 'verifiedStatus',
+    in: 'query',
+    schema: { type: 'string', maxLength: 40 },
+    description: 'Verification status. Alias of `verificationStatus`.',
+  },
+  {
+    name: 'isDemo',
+    in: 'query',
+    schema: { type: 'string', maxLength: 10 },
+    description: 'Filter seeded demo records in or out.',
+  },
+  {
+    name: 'sortBy',
+    in: 'query',
+    schema: { type: 'string', maxLength: 40 },
+    description: 'Sort key. Match-based sorting requires a session and is windowed to the most recent matches.',
+  },
   { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 10000, default: 1 } },
   { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 12 } },
 ] as const;
 
 export const scholarshipPaths = {
+  '/api/scholarships/for-me': {
+    get: {
+      tags: ['Scholarships'],
+      summary: 'Personalised scholarships, grouped by country relationship',
+      description: [
+        'The default view of the scholarships page. Returns up to three disjoint sections,',
+        "each ranked by the caller's match score:",
+        '',
+        "- `home` — hosted in the student's `countryOfResidence`",
+        '- `target` — hosted in their `targetCountries` (the home country is excluded so no',
+        '  scholarship appears twice)',
+        '- `international` — strong matches outside both of the above',
+        '',
+        'Sections are omitted rather than returned empty when the profile lacks the relevant',
+        'field, and `notices` explains what to fill in.',
+        '',
+        'A section carries `discoverable: true` when it is empty and a country-scoped live',
+        'search could populate it — the seeded catalogue holds only study-abroad',
+        "destinations, so a student's own country typically starts with nothing and no query",
+        'will change that until records are discovered.',
+      ].join('\n'),
+      parameters: [
+        {
+          name: 'perSection',
+          in: 'query',
+          schema: { type: 'integer', minimum: 3, maximum: 24, default: 6 },
+          description: 'Cards per section. Bounded so one request cannot pull the whole catalogue.',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Grouped, profile-ranked scholarships.',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  profileComplete: {
+                    type: 'boolean',
+                    description: 'True only when both a country of residence and at least one target country are set.',
+                  },
+                  homeCountry: { type: 'string', nullable: true },
+                  targetCountries: { type: 'array', items: { type: 'string' } },
+                  notices: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Actionable profile gaps, already phrased for the user.',
+                  },
+                  sections: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        key: { type: 'string', enum: ['home', 'target', 'international'] },
+                        title: { type: 'string' },
+                        subtitle: { type: 'string' },
+                        countries: { type: 'array', items: { type: 'string' } },
+                        total: {
+                          type: 'integer',
+                          description: 'Matching records in this section, before the perSection cap.',
+                        },
+                        discoverable: { type: 'boolean' },
+                        items: { type: 'array', items: { $ref: '#/components/schemas/Scholarship' } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        400: { $ref: '#/components/responses/ValidationFailed' },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        429: { $ref: '#/components/responses/RateLimited' },
+        500: { $ref: '#/components/responses/ServerError' },
+      },
+    },
+  },
+
+  '/api/scholarships/discover/country': {
+    post: {
+      tags: ['Scholarships'],
+      summary: 'Run a live scholarship search for one country',
+      description: [
+        'Searches official sources for scholarships hosted in a specific country and ingests',
+        "whatever can be verified. Intended for the case where a student's own country has no",
+        'records yet.',
+        '',
+        '**Answers 200 even when no search ran.** Every provider being out of quota is an',
+        'expected operating condition, not a fault — inspect `usedLiveExternalSearch` rather',
+        'than relying on the status code, and show `notices` to the user. Treating this as a',
+        'failure would report "no scholarships exist" when the truth is "we could not look".',
+        '',
+        'Expensive: one web search plus model calls per request. Limited by the AI-heavy',
+        'bucket and additionally to `RATE_LIMIT_COUNTRY_DISCOVERY_MAX` (4) per 10 minutes, so',
+        'one account cannot drain the shared search quota.',
+      ].join('\n'),
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['country'],
+              properties: {
+                country: {
+                  type: 'string',
+                  minLength: 2,
+                  maxLength: 60,
+                  description:
+                    "Restricted to letters, marks, spaces and `' . ( ) -`, because the value reaches a search provider and a model prompt.",
+                  example: 'Pakistan',
+                },
+                degreeLevel: { type: 'string', enum: DEGREE_LEVELS },
+                fieldOfStudy: { type: 'string', maxLength: 120 },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'The search was attempted. Check `usedLiveExternalSearch` for whether it actually ran.',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  country: { type: 'string' },
+                  usedLiveExternalSearch: { type: 'boolean' },
+                  searchProvider: { type: 'string', example: 'gemini-google-search → duckduckgo-html' },
+                  created: { type: 'integer' },
+                  updated: { type: 'integer' },
+                  rejected: {
+                    type: 'integer',
+                    description: 'Candidates dropped for failing URL or field verification.',
+                  },
+                  count: { type: 'integer' },
+                  notices: { type: 'array', items: { type: 'string' } },
+                },
+              },
+            },
+          },
+        },
+        400: { $ref: '#/components/responses/ValidationFailed' },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        429: { $ref: '#/components/responses/RateLimited' },
+        500: { $ref: '#/components/responses/ServerError' },
+      },
+    },
+  },
+
   '/api/scholarships': {
     get: {
       tags: ['Scholarships'],
@@ -80,7 +328,8 @@ export const scholarshipPaths = {
     get: {
       tags: ['Scholarships'],
       summary: 'Filter facets',
-      description: 'Distinct countries, funding types, degree levels, fields and verification statuses. Cached for five minutes.',
+      description:
+        'Distinct countries, funding types, degree levels, fields and verification statuses. Cached for five minutes.',
       security: [],
       responses: {
         200: {
@@ -96,7 +345,8 @@ export const scholarshipPaths = {
     get: {
       tags: ['Scholarships'],
       summary: 'Get one scholarship',
-      description: 'Includes verification history and sources. A bearer token adds `userMatch`, `isSaved` and `applicationStatus`.',
+      description:
+        'Includes verification history and sources. A bearer token adds `userMatch`, `isSaved` and `applicationStatus`.',
       security: [{ bearerAuth: [] }, {}],
       parameters: [{ $ref: '#/components/parameters/ScholarshipId' }],
       responses: {
@@ -155,8 +405,8 @@ export const scholarshipPaths = {
       tags: ['Eligibility'],
       summary: 'Eligibility assessment for this scholarship',
       description: [
-        'With a bearer token the result is computed against the caller\'s saved profile and',
-        'cached per profile hash. Without one, the scholarship\'s own criteria are returned',
+        "With a bearer token the result is computed against the caller's saved profile and",
+        "cached per profile hash. Without one, the scholarship's own criteria are returned",
         'evaluated against an empty profile.',
         '',
         'The score is an advisory estimate, never an eligibility decision.',
@@ -210,7 +460,7 @@ export const scholarshipPaths = {
   '/api/scholarships/match/recalculate': {
     post: {
       tags: ['Recommendations'],
-      summary: 'Recalculate the caller\'s matches',
+      summary: "Recalculate the caller's matches",
       description: 'Rebuilds every cached match for the signed-in user. Rate limited to 6 requests per minute.',
       responses: {
         200: {
@@ -228,10 +478,14 @@ export const scholarshipPaths = {
     get: {
       tags: ['Verification'],
       summary: 'Verification queue (admin)',
-      description:
-        'Administrator-only: the queue exposes crawler payloads, source URLs and reviewer identities.',
+      description: 'Administrator-only: the queue exposes crawler payloads, source URLs and reviewer identities.',
       parameters: [
-        { name: 'status', in: 'query', schema: { type: 'string', maxLength: 40 }, description: 'Filter by verification status.' },
+        {
+          name: 'status',
+          in: 'query',
+          schema: { type: 'string', maxLength: 40 },
+          description: 'Filter by verification status.',
+        },
         { $ref: '#/components/parameters/Page' },
         { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 50, default: 20 } },
       ],
@@ -346,7 +600,7 @@ export const recommendationPaths = {
       tags: ['Recommendations'],
       summary: 'Personalised recommendations',
       description:
-        'Ranked matches for the signed-in user\'s profile. Scores are advisory estimates for discovery and planning, not eligibility decisions.',
+        "Ranked matches for the signed-in user's profile. Scores are advisory estimates for discovery and planning, not eligibility decisions.",
       responses: {
         200: {
           description: 'Ranked recommendations, each carrying its scholarship and match assessment.',
@@ -419,9 +673,7 @@ export const savedPaths = {
       tags: ['Saved'],
       summary: 'Save a scholarship by path id',
       description: 'Path-parameter form of `POST /api/saved`. Equally idempotent.',
-      parameters: [
-        { name: 'scholarshipId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-      ],
+      parameters: [{ name: 'scholarshipId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
         201: {
           description: 'Saved.',
@@ -440,9 +692,7 @@ export const savedPaths = {
     delete: {
       tags: ['Saved'],
       summary: 'Remove a saved scholarship',
-      parameters: [
-        { name: 'scholarshipId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-      ],
+      parameters: [{ name: 'scholarshipId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
         200: {
           description: 'Removed.',
@@ -454,7 +704,7 @@ export const savedPaths = {
         },
         401: { $ref: '#/components/responses/Unauthorized' },
         404: {
-          description: 'The scholarship is not in the caller\'s saved list.',
+          description: "The scholarship is not in the caller's saved list.",
           content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
         },
         500: { $ref: '#/components/responses/ServerError' },

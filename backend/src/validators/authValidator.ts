@@ -43,3 +43,31 @@ export const loginSchema = z.object({
     })
     .strip(),
 });
+
+export const forgotPasswordSchema = z.object({
+  body: z.object({ email: emailField }).strip(),
+});
+
+export const resetPasswordSchema = z.object({
+  body: z
+    .object({
+      // 32 random bytes as base64url. Bounded so an oversized value is rejected before
+      // it reaches the hash-and-lookup path.
+      token: z.string().trim().min(20, 'Reset token is missing or malformed').max(256),
+      password: passwordField,
+    })
+    .strip(),
+});
+
+export const changePasswordSchema = z.object({
+  body: z
+    .object({
+      currentPassword: z.string().min(1, 'Your current password is required').max(128),
+      newPassword: passwordField,
+    })
+    .strip()
+    .refine((v) => v.currentPassword !== v.newPassword, {
+      message: 'Your new password must be different from your current password',
+      path: ['newPassword'],
+    }),
+});

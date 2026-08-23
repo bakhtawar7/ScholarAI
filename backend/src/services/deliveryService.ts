@@ -125,7 +125,8 @@ class SmtpTransport {
         });
         await this.command(`EHLO ${this.host}`, 250);
       } catch (err: any) {
-        if (this.user) throw new Error(`STARTTLS unavailable, refusing to send credentials in plaintext: ${err.message}`);
+        if (this.user)
+          throw new Error(`STARTTLS unavailable, refusing to send credentials in plaintext: ${err.message}`);
         logger.warn('SMTP server does not support STARTTLS; continuing unauthenticated', { host: this.host });
       }
     }
@@ -283,11 +284,20 @@ export async function deliverMessages(messages: OutboundMessage[]): Promise<Deli
     // Connection-level failure: nothing was sent.
     failed = messages.length;
     errors.push(`SMTP connection failed: ${err.message}`);
-    logger.error('SMTP connection failed — notifications not delivered', { host: config.smtp.host, message: err.message });
+    logger.error('SMTP connection failed — notifications not delivered', {
+      host: config.smtp.host,
+      message: err.message,
+    });
     captureException(err, {
       area: 'email',
       level: 'error',
-      extra: { transport: 'smtp', stage: 'connect', host: config.smtp.host, port: config.smtp.port, batchSize: messages.length },
+      extra: {
+        transport: 'smtp',
+        stage: 'connect',
+        host: config.smtp.host,
+        port: config.smtp.port,
+        batchSize: messages.length,
+      },
     });
   } finally {
     await transport.quit();

@@ -267,14 +267,3 @@ CREATE UNIQUE INDEX "StudentProfile_userId_key" ON "StudentProfile"("userId" ASC
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email" ASC);
-
-┌─────────────────────────────────────────────────────────┐
-│  Update available 5.22.0 -> 7.9.1                       │
-│                                                         │
-│  This is a major update - please follow the guide at    │
-│  https://pris.ly/d/major-version-upgrade                │
-│                                                         │
-│  Run the following to update                            │
-│    npm i --save-dev prisma@latest                       │
-│    npm i @prisma/client@latest                          │
-└─────────────────────────────────────────────────────────┘

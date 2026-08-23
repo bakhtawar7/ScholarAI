@@ -1,4 +1,4 @@
-import { executeToolCall, toolDefinitions } from '../tools/chatbotTools';
+import { executeToolCall } from '../tools/chatbotTools';
 import { OrchestratorAgent } from '../agents/orchestratorAgent';
 import { ProfileService } from '../services/profileService';
 import { prisma } from '../utils/prisma';
@@ -117,7 +117,10 @@ async function runChatbotOrchestratorTests() {
   // ----------------------------------------------------
   {
     const res = await executeToolCall('searchScholarships', { q: 'Germany', fundingType: 'FULL_FUNDING' }, userIdA);
-    assert(res && typeof res.total === 'number' && Array.isArray(res.items), 'Tool 1: searchScholarships returns structured items');
+    assert(
+      res && typeof res.total === 'number' && Array.isArray(res.items),
+      'Tool 1: searchScholarships returns structured items'
+    );
     assert(res.items.length > 0, 'Tool 1b: searchScholarships finds records');
   }
 
@@ -126,7 +129,11 @@ async function runChatbotOrchestratorTests() {
   // ----------------------------------------------------
   {
     const res1 = await executeToolCall('getScholarshipDetails', { scholarshipId }, userIdA);
-    const res2 = await executeToolCall('getScholarshipDetails', { titleKeyword: sampleScholarship.title.split(' ')[0] }, userIdA);
+    const res2 = await executeToolCall(
+      'getScholarshipDetails',
+      { titleKeyword: sampleScholarship.title.split(' ')[0] },
+      userIdA
+    );
     assert(res1 && res1.id === scholarshipId, 'Tool 2a: getScholarshipDetails resolves by UUID');
     assert(res2 && res2.id === scholarshipId, 'Tool 2b: getScholarshipDetails resolves by title keyword');
   }
@@ -136,7 +143,10 @@ async function runChatbotOrchestratorTests() {
   // ----------------------------------------------------
   {
     const profileRes = await executeToolCall('getStudentProfile', {}, userIdA);
-    assert(profileRes && profileRes.fieldOfStudy === 'Computer Science', 'Tool 3: getStudentProfile returns active student attributes');
+    assert(
+      profileRes && profileRes.fieldOfStudy === 'Computer Science',
+      'Tool 3: getStudentProfile returns active student attributes'
+    );
   }
 
   // ----------------------------------------------------
@@ -144,9 +154,20 @@ async function runChatbotOrchestratorTests() {
   // ----------------------------------------------------
   {
     const eligRes = await executeToolCall('checkEligibility', { scholarshipId }, userIdA);
-    assert(typeof eligRes.matchScore === 'number' && eligRes.matchScore >= 0, 'Tool 4a: checkEligibility returns matchScore');
-    assert(['ELIGIBLE', 'POTENTIALLY_ELIGIBLE', 'NOT_ELIGIBLE', 'INSUFFICIENT_INFORMATION'].includes(eligRes.eligibilityStatus), 'Tool 4b: checkEligibility returns valid status');
-    assert(Array.isArray(eligRes.matchingCriteria) && eligRes.disclaimer, 'Tool 4c: checkEligibility includes matchingCriteria and disclaimer');
+    assert(
+      typeof eligRes.matchScore === 'number' && eligRes.matchScore >= 0,
+      'Tool 4a: checkEligibility returns matchScore'
+    );
+    assert(
+      ['ELIGIBLE', 'POTENTIALLY_ELIGIBLE', 'NOT_ELIGIBLE', 'INSUFFICIENT_INFORMATION'].includes(
+        eligRes.eligibilityStatus
+      ),
+      'Tool 4b: checkEligibility returns valid status'
+    );
+    assert(
+      Array.isArray(eligRes.matchingCriteria) && eligRes.disclaimer,
+      'Tool 4c: checkEligibility includes matchingCriteria and disclaimer'
+    );
   }
 
   // ----------------------------------------------------
@@ -161,8 +182,15 @@ async function runChatbotOrchestratorTests() {
   // TOOL 6: compareScholarships
   // ----------------------------------------------------
   {
-    const comp = await executeToolCall('compareScholarships', { scholarshipIds: [scholarshipId, scholarshipId2] }, userIdA);
-    assert(Array.isArray(comp) && comp.length >= 2, 'Tool 6: compareScholarships returns side-by-side comparison array');
+    const comp = await executeToolCall(
+      'compareScholarships',
+      { scholarshipIds: [scholarshipId, scholarshipId2] },
+      userIdA
+    );
+    assert(
+      Array.isArray(comp) && comp.length >= 2,
+      'Tool 6: compareScholarships returns side-by-side comparison array'
+    );
   }
 
   // ----------------------------------------------------
@@ -175,7 +203,10 @@ async function runChatbotOrchestratorTests() {
 
     // Get Saved
     const savedList = await executeToolCall('getSavedScholarships', {}, userIdA);
-    assert(Array.isArray(savedList) && savedList.some((s: any) => s.id === scholarshipId), 'Tool 9: getSavedScholarships returns saved items');
+    assert(
+      Array.isArray(savedList) && savedList.some((s: any) => s.id === scholarshipId),
+      'Tool 9: getSavedScholarships returns saved items'
+    );
 
     // Remove Saved
     const removeRes = await executeToolCall('removeSavedScholarship', { scholarshipId }, userIdA);
@@ -187,7 +218,11 @@ async function runChatbotOrchestratorTests() {
   // ----------------------------------------------------
   {
     // Create Application
-    const appRes = await executeToolCall('createApplication', { scholarshipId, status: 'INTERESTED', notes: 'Preparing initial draft' }, userIdA);
+    const appRes = await executeToolCall(
+      'createApplication',
+      { scholarshipId, status: 'INTERESTED', notes: 'Preparing initial draft' },
+      userIdA
+    );
     assert(appRes && appRes.success === true, 'Tool 10: createApplication creates application tracker entry');
 
     // Get Applications
@@ -195,8 +230,15 @@ async function runChatbotOrchestratorTests() {
     assert(Array.isArray(appsList) && appsList.length > 0, 'Tool 11: getApplications retrieves tracked applications');
 
     // Update Application Status
-    const updateAppRes = await executeToolCall('updateApplicationStatus', { scholarshipId, status: 'PREPARING', notes: 'SOP draft ready' }, userIdA);
-    assert(updateAppRes && updateAppRes.success === true && updateAppRes.status === 'PREPARING', 'Tool 12: updateApplicationStatus updates status');
+    const updateAppRes = await executeToolCall(
+      'updateApplicationStatus',
+      { scholarshipId, status: 'PREPARING', notes: 'SOP draft ready' },
+      userIdA
+    );
+    assert(
+      updateAppRes && updateAppRes.success === true && updateAppRes.status === 'PREPARING',
+      'Tool 12: updateApplicationStatus updates status'
+    );
   }
 
   // ----------------------------------------------------
@@ -211,11 +253,15 @@ async function runChatbotOrchestratorTests() {
   // TOOL 14: createReminder
   // ----------------------------------------------------
   {
-    const reminderRes = await executeToolCall('createReminder', {
-      title: 'Submit DAAD Motivation Letter',
-      dueDate: '2026-11-01T00:00:00Z',
-      daysBefore: 5,
-    }, userIdA);
+    const reminderRes = await executeToolCall(
+      'createReminder',
+      {
+        title: 'Submit DAAD Motivation Letter',
+        dueDate: '2026-11-01T00:00:00Z',
+        daysBefore: 5,
+      },
+      userIdA
+    );
     assert(reminderRes && reminderRes.success === true, 'Tool 14: createReminder persists reminder');
   }
 
@@ -224,7 +270,10 @@ async function runChatbotOrchestratorTests() {
   // ----------------------------------------------------
   {
     const updateProfRes = await executeToolCall('updateStudentProfile', { gpa: 3.82 }, userIdA);
-    assert(updateProfRes && updateProfRes.success === true && updateProfRes.profile.gpa === 3.82, 'Tool 15: updateStudentProfile updates student profile');
+    assert(
+      updateProfRes && updateProfRes.success === true && updateProfRes.profile.gpa === 3.82,
+      'Tool 15: updateStudentProfile updates student profile'
+    );
   }
 
   // ----------------------------------------------------
@@ -300,13 +349,12 @@ async function runChatbotOrchestratorTests() {
     );
 
     // Step 3: Deadlines
-    const reply3 = await OrchestratorAgent.processUserMessage(
-      conv.id,
-      userIdA,
-      'What is my earliest deadline?'
-    );
+    const reply3 = await OrchestratorAgent.processUserMessage(conv.id, userIdA, 'What is my earliest deadline?');
     assert(
-      reply3 && (reply3.content.includes('Deadline') || reply3.content.includes('Cutoff') || reply3.content.includes('tracker')),
+      reply3 &&
+        (reply3.content.includes('Deadline') ||
+          reply3.content.includes('Cutoff') ||
+          reply3.content.includes('tracker')),
       'Conversation Step 3: Deadlines query invokes getUpcomingDeadlines tool',
       reply3.content.slice(0, 100)
     );

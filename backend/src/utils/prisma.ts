@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 
-
 /**
  * Reuse a single client across hot reloads in development — ts-node-dev
  * re-executes modules on change and each new PrismaClient opens its own

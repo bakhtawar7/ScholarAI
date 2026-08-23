@@ -1,5 +1,4 @@
 import { prisma } from '../utils/prisma';
-import { parseJsonField } from '../utils/jsonHelper';
 import { NotificationService } from './notificationService';
 
 export interface DeadlineAutomationResult {
@@ -18,7 +17,13 @@ export interface DeadlineAutomationResult {
     daysRemaining: number;
     milestoneTag?: string;
     recipientUserId: string;
-    actionTaken: 'NOTIFICATION_SENT' | 'SUPPRESSED_ALREADY_SUBMITTED' | 'SUPPRESSED_REJECTED' | 'SUPPRESSED_DUPLICATE' | 'EXPIRED_NOTIFICATION_SENT' | 'NO_ACTIVE_MILESTONE';
+    actionTaken:
+      | 'NOTIFICATION_SENT'
+      | 'SUPPRESSED_ALREADY_SUBMITTED'
+      | 'SUPPRESSED_REJECTED'
+      | 'SUPPRESSED_DUPLICATE'
+      | 'EXPIRED_NOTIFICATION_SENT'
+      | 'NO_ACTIVE_MILESTONE';
     notes?: string;
   }>;
 }
@@ -50,7 +55,9 @@ export class DeadlineAutomationService {
    * Evaluates all upcoming scholarship deadlines and dispatches automated alerts
    * to students who have saved or are preparing applications for those scholarships.
    */
-  static async runDeadlineAutomation(options: { forceAllMilestones?: boolean } = {}): Promise<DeadlineAutomationResult> {
+  static async runDeadlineAutomation(
+    options: { forceAllMilestones?: boolean } = {}
+  ): Promise<DeadlineAutomationResult> {
     const now = new Date();
     const result: DeadlineAutomationResult = {
       timestamp: now.toISOString(),
@@ -73,9 +80,7 @@ export class DeadlineAutomationService {
 
     const scholarships = await prisma.scholarship.findMany({
       where: {
-        deadline: options.forceAllMilestones
-          ? { not: null }
-          : { not: null, gte: windowStart, lte: windowEnd },
+        deadline: options.forceAllMilestones ? { not: null } : { not: null, gte: windowStart, lte: windowEnd },
       },
       include: {
         savedBy: { select: { userId: true } },
@@ -125,11 +130,7 @@ export class DeadlineAutomationService {
 
         // CASE 1: Already Submitted Applications (APPLIED, INTERVIEW, ACCEPTED)
         // Suppress pre-submission deadline warnings since the student has already applied
-        if (
-          applicationStatus === 'APPLIED' ||
-          applicationStatus === 'INTERVIEW' ||
-          applicationStatus === 'ACCEPTED'
-        ) {
+        if (applicationStatus === 'APPLIED' || applicationStatus === 'INTERVIEW' || applicationStatus === 'ACCEPTED') {
           result.submittedSuppressed++;
           result.details.push({
             scholarshipId: scholarship.id,
@@ -224,10 +225,10 @@ export class DeadlineAutomationService {
           daysRemaining <= 1
             ? `🚨 FINAL CALL: 1 Day Left for ${scholarship.title}`
             : daysRemaining <= 3
-            ? `🔴 CRITICAL: ${daysRemaining} Days Left for ${scholarship.title}`
-            : daysRemaining <= 7
-            ? `🟠 URGENT: 1 Week Remaining for ${scholarship.title}`
-            : `⏰ Deadline Alert: ${daysRemaining} Days Left for ${scholarship.title}`;
+              ? `🔴 CRITICAL: ${daysRemaining} Days Left for ${scholarship.title}`
+              : daysRemaining <= 7
+                ? `🟠 URGENT: 1 Week Remaining for ${scholarship.title}`
+                : `⏰ Deadline Alert: ${daysRemaining} Days Left for ${scholarship.title}`;
 
         const notificationMsg =
           daysRemaining <= 1

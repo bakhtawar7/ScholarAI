@@ -82,7 +82,10 @@ class GeminiGroundingProvider implements WebSearchProvider {
     return Boolean(config.openaiApiKey) && config.llmProvider === 'gemini';
   }
 
-  async search(queries: string[], options: { limitPerQuery?: number; recencyDays?: number } = {}): Promise<SearchResponse> {
+  async search(
+    queries: string[],
+    options: { limitPerQuery?: number; recencyDays?: number } = {}
+  ): Promise<SearchResponse> {
     const model = config.searchModel || config.openaiModel;
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(
       config.openaiApiKey
@@ -159,7 +162,10 @@ class SerperProvider implements WebSearchProvider {
     return config.searchProvider === 'serper' && Boolean(config.searchApiKey);
   }
 
-  async search(queries: string[], options: { limitPerQuery?: number; recencyDays?: number } = {}): Promise<SearchResponse> {
+  async search(
+    queries: string[],
+    options: { limitPerQuery?: number; recencyDays?: number } = {}
+  ): Promise<SearchResponse> {
     const limit = options.limitPerQuery || 8;
     const url = config.searchApiUrl || 'https://google.serper.dev/search';
 
@@ -199,7 +205,10 @@ class TavilyProvider implements WebSearchProvider {
     return config.searchProvider === 'tavily' && Boolean(config.searchApiKey);
   }
 
-  async search(queries: string[], options: { limitPerQuery?: number; recencyDays?: number } = {}): Promise<SearchResponse> {
+  async search(
+    queries: string[],
+    options: { limitPerQuery?: number; recencyDays?: number } = {}
+  ): Promise<SearchResponse> {
     const url = config.searchApiUrl || 'https://api.tavily.com/search';
     const hits: SearchHit[] = [];
 
@@ -222,7 +231,9 @@ class TavilyProvider implements WebSearchProvider {
             title: String(r.title || '').trim(),
             url: String(r.url).trim(),
             // Tavily returns real page text, which materially improves extraction quality.
-            snippet: String(r.content || r.raw_content || '').trim().slice(0, 4000),
+            snippet: String(r.content || r.raw_content || '')
+              .trim()
+              .slice(0, 4000),
             publishedAt: r.published_date,
           });
         }
@@ -290,7 +301,10 @@ class DuckDuckGoFallbackProvider implements WebSearchProvider {
     return config.searchAllowKeyless;
   }
 
-  async search(queries: string[], options: { limitPerQuery?: number; recencyDays?: number } = {}): Promise<SearchResponse> {
+  async search(
+    queries: string[],
+    options: { limitPerQuery?: number; recencyDays?: number } = {}
+  ): Promise<SearchResponse> {
     const { duckDuckGoSearch } = await import('./duckDuckGoProvider');
     const { hits, error } = await duckDuckGoSearch(queries, options);
 

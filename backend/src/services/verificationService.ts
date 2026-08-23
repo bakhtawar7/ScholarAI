@@ -3,7 +3,15 @@ import { parseJsonField, safeJsonStringify } from '../utils/jsonHelper';
 import { checkUrlReachable } from '../utils/urlChecker';
 
 export interface FieldAudit {
-  field: 'deadline' | 'funding' | 'eligibility' | 'nationality' | 'degree' | 'field' | 'language requirement' | 'application URL';
+  field:
+    | 'deadline'
+    | 'funding'
+    | 'eligibility'
+    | 'nationality'
+    | 'degree'
+    | 'field'
+    | 'language requirement'
+    | 'application URL';
   value: any;
   source: string;
   confidence: number; // 0.0 to 1.0
@@ -175,7 +183,7 @@ export class VerificationService {
     });
 
     // 5. Nationality Requirements Verification
-    let nationalityConfidence = 0.92;
+    const nationalityConfidence = 0.92;
     let nationalityNotes = 'Nationality eligibility criteria confirmed.';
     if (eligibleNationalities.length > 0) {
       nationalityNotes = `Restricted to citizens of: ${eligibleNationalities.join(', ')}`;
@@ -185,7 +193,9 @@ export class VerificationService {
 
     fieldAudits.push({
       field: 'nationality',
-      value: scholarship.nationalityRequirements || (eligibleNationalities.length > 0 ? eligibleNationalities.join(', ') : 'Global / All Nationalities'),
+      value:
+        scholarship.nationalityRequirements ||
+        (eligibleNationalities.length > 0 ? eligibleNationalities.join(', ') : 'Global / All Nationalities'),
       source: primarySource,
       confidence: nationalityConfidence,
       status: 'VERIFIED',
@@ -237,7 +247,9 @@ export class VerificationService {
       languageNotes = 'Standard institutional instruction language applies; no test minimum configured.';
     } else {
       languageConfidence = 0.96;
-      languageNotes = `Test score minimums verified: ${Object.entries(languageRequirements).map(([k, v]) => `${k} ${v}`).join(', ')}`;
+      languageNotes = `Test score minimums verified: ${Object.entries(languageRequirements)
+        .map(([k, v]) => `${k} ${v}`)
+        .join(', ')}`;
     }
 
     fieldAudits.push({
@@ -267,7 +279,8 @@ export class VerificationService {
       status = 'NEEDS_REVIEW';
     }
 
-    const summaryNotes = options?.notes ||
+    const summaryNotes =
+      options?.notes ||
       `Verification Agent audited 8 core fields with overall confidence ${Math.round(overallConfidence * 100)}%. Status assigned: ${status}.`;
 
     const report: VerificationReport = {
@@ -448,10 +461,11 @@ export class VerificationService {
     const scholarship = await prisma.scholarship.findUnique({ where: { id: scholarshipId } });
     if (!scholarship) throw { statusCode: 404, message: 'Scholarship not found' };
 
-    const confidence = status === 'VERIFIED' ? 1.0 : status === 'PARTIALLY_VERIFIED' ? 0.75 : status === 'NEEDS_REVIEW' ? 0.5 : 0.1;
+    const confidence =
+      status === 'VERIFIED' ? 1.0 : status === 'PARTIALLY_VERIFIED' ? 0.75 : status === 'NEEDS_REVIEW' ? 0.5 : 0.1;
     const verifiedBy = reviewerId ? `MANUAL_ADMIN_${reviewerId.slice(0, 8)}` : 'MANUAL_ADMIN_REVIEWER';
 
-    const updated = await prisma.scholarship.update({
+    await prisma.scholarship.update({
       where: { id: scholarshipId },
       data: {
         verificationStatus: status,

@@ -14,7 +14,10 @@ async function main() {
   console.log('=== Search provider configuration ===');
   console.log('EXTERNAL_DISCOVERY_ENABLED :', config.externalDiscoveryEnabled);
   console.log('SCHOLARSHIP_SEARCH_PROVIDER:', config.searchProvider || '(auto-detect)');
-  console.log('SCHOLARSHIP_SEARCH_API_KEY :', config.searchApiKey ? `set (${config.searchApiKey.length} chars)` : 'NOT SET');
+  console.log(
+    'SCHOLARSHIP_SEARCH_API_KEY :',
+    config.searchApiKey ? `set (${config.searchApiKey.length} chars)` : 'NOT SET'
+  );
   console.log('LLM provider / model       :', config.llmProvider, '/', config.openaiModel);
   console.log('Resolved provider          :', describeSearchProvider());
   console.log('Provider object            :', resolveProvider() ? 'resolved' : 'NULL — no live search possible');
@@ -28,7 +31,11 @@ async function main() {
   console.log();
 
   console.log('provider     :', res.provider);
-  console.log('external     :', res.external, res.external ? '(a real outbound search happened)' : '(NO outbound search)');
+  console.log(
+    'external     :',
+    res.external,
+    res.external ? '(a real outbound search happened)' : '(NO outbound search)'
+  );
   console.log('error        :', res.error || 'none');
   console.log('queriesIssued:', res.queriesIssued);
   console.log('hits         :', res.hits.length);

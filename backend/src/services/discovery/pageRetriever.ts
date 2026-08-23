@@ -211,7 +211,7 @@ export function htmlToText(html: string): string {
       const code = Number(d);
       return code > 31 && code < 0x10ffff ? String.fromCodePoint(code) : ' ';
     })
-    .replace(/[ \t ]+/g, ' ')
+    .replace(/[ \t\u00a0]+/g, ' ')
     .replace(/\n\s*\n\s*\n+/g, '\n\n')
     .trim();
 }
@@ -264,7 +264,9 @@ export async function retrievePage(rawUrl: string, maxChars = 12_000): Promise<R
 
       // Access-gated or rate limited: respect it, do not retry or work around it.
       if (res.status === 401 || res.status === 403 || res.status === 407 || res.status === 429) {
-        return fail(`Host responded HTTP ${res.status} (access-gated or rate limited); not read.`, { status: res.status });
+        return fail(`Host responded HTTP ${res.status} (access-gated or rate limited); not read.`, {
+          status: res.status,
+        });
       }
       if (res.status < 200 || res.status >= 400) {
         return fail(`Unreachable (HTTP ${res.status}).`, { status: res.status });
@@ -290,12 +292,19 @@ export async function retrievePage(rawUrl: string, maxChars = 12_000): Promise<R
     });
   } catch (err: any) {
     const aborted = err?.name === 'AbortError';
-    return fail(aborted ? `No response within ${FETCH_TIMEOUT_MS}ms.` : `Network error (${err?.code || err?.message || 'unknown'}).`);
+    return fail(
+      aborted
+        ? `No response within ${FETCH_TIMEOUT_MS}ms.`
+        : `Network error (${err?.code || err?.message || 'unknown'}).`
+    );
   }
 }
 
 /** Retrieves several pages with bounded concurrency. */
-export async function retrievePages(urls: string[], options: { maxPages?: number; maxCharsPerPage?: number; concurrency?: number } = {}) {
+export async function retrievePages(
+  urls: string[],
+  options: { maxPages?: number; maxCharsPerPage?: number; concurrency?: number } = {}
+) {
   const maxPages = options.maxPages ?? 6;
   const concurrency = Math.max(1, options.concurrency ?? 3);
   const targets = Array.from(new Set(urls.filter(Boolean))).slice(0, maxPages);

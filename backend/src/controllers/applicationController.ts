@@ -72,7 +72,12 @@ export class ApplicationController {
       const userId = req.user!.id;
       const { id } = req.params;
       const { item, dueDate } = req.body;
-      const newItem = await ApplicationService.addChecklistItem(id, userId, item, dueDate ? new Date(dueDate) : undefined);
+      const newItem = await ApplicationService.addChecklistItem(
+        id,
+        userId,
+        item,
+        dueDate ? new Date(dueDate) : undefined
+      );
       res.status(201).json(newItem);
     } catch (err) {
       next(err);

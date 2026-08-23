@@ -20,11 +20,7 @@ import { deliverMessages } from './deliveryService';
  */
 
 export type EmailEvent =
-  | 'welcome'
-  | 'password-reset'
-  | 'scholarship-match'
-  | 'deadline-reminder'
-  | 'application-update';
+  'welcome' | 'password-reset' | 'scholarship-match' | 'deadline-reminder' | 'application-update';
 
 export interface EmailResult {
   sent: boolean;
@@ -49,8 +45,87 @@ function getResend(): Resend | null {
   return resendClient;
 }
 
+/**
+ * Resend's shared sandbox sender. Usable with no DNS setup at all, but it will only
+ * deliver to the Resend account owner's own address — every other recipient is
+ * rejected with a 403. Fine for local development and demos, useless for real users.
+ */
+const RESEND_SANDBOX_SENDER = 'onboarding@resend.dev';
+
+/**
+ * Consumer mailbox providers. A sender address on one of these can never work with
+ * Resend: sending requires proving ownership of the sender's domain via DNS records,
+ * and nobody can do that for gmail.com. Configuring one is the single most common
+ * setup mistake, and the resulting 403 looks identical to a transient outage unless
+ * it is called out explicitly.
+ */
+const UNVERIFIABLE_SENDER_DOMAINS = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'yahoo.com',
+  'yahoo.co.uk',
+  'hotmail.com',
+  'outlook.com',
+  'live.com',
+  'msn.com',
+  'aol.com',
+  'icloud.com',
+  'me.com',
+  'proton.me',
+  'protonmail.com',
+  'gmx.com',
+  'yandex.com',
+  'zoho.com',
+  'mail.com',
+]);
+
+function senderDomain(): string {
+  return (config.resend.fromEmail.split('@')[1] || '').trim().toLowerCase();
+}
+
+export function isSandboxSender(): boolean {
+  return config.resend.fromEmail.trim().toLowerCase() === RESEND_SANDBOX_SENDER;
+}
+
+/**
+ * Why the configured Resend sender cannot deliver, or null when it looks usable.
+ *
+ * This is a static check — it cannot confirm that a custom domain has actually been
+ * verified (a send-only API key is not permitted to read /domains). It exists to catch
+ * the misconfigurations that are knowable up front, so they surface at boot rather than
+ * as silently swallowed 403s at send time.
+ */
+export function describeResendSenderProblem(): string | null {
+  if (!config.resend.apiKey) return null;
+
+  const from = config.resend.fromEmail.trim();
+  if (!from) {
+    return 'RESEND_FROM_EMAIL is not set. Resend cannot send without an explicit sender address.';
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(from)) {
+    return `RESEND_FROM_EMAIL ("${from}") is not a valid email address.`;
+  }
+
+  const domain = senderDomain();
+  if (UNVERIFIABLE_SENDER_DOMAINS.has(domain)) {
+    return (
+      `RESEND_FROM_EMAIL uses "${domain}", which can never be verified with Resend — ` +
+      `sending requires DNS ownership of the sender's domain. Every send will be rejected ` +
+      `with 403 "The ${domain} domain is not verified". Use ${RESEND_SANDBOX_SENDER} for ` +
+      `local testing, or verify your own domain at https://resend.com/domains.`
+    );
+  }
+
+  return null;
+}
+
+/**
+ * True when Resend is configured with a sender that stands a chance of delivering.
+ * A key paired with an unusable sender is treated as unconfigured so the SMTP
+ * fallback is given a chance instead of every send failing.
+ */
 export function isResendConfigured(): boolean {
-  return Boolean(config.resend.apiKey && config.resend.fromEmail);
+  return Boolean(config.resend.apiKey && config.resend.fromEmail && !describeResendSenderProblem());
 }
 
 /** `Name <email>` for the configured sender. */
@@ -75,13 +150,19 @@ const BRAND = 'ScholarAI';
  *
  * Inline styles only — email clients strip <style> blocks and external CSS.
  */
-function layout(opts: { heading: string; bodyHtml: string; ctaLabel?: string; ctaUrl?: string; footerNote?: string }): string {
+function layout(opts: {
+  heading: string;
+  bodyHtml: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  footerNote?: string;
+}): string {
   const cta =
     opts.ctaLabel && opts.ctaUrl
       ? `<tr><td style="padding:8px 0 24px;">
            <a href="${esc(opts.ctaUrl)}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:6px;font-weight:600;font-size:15px;">${esc(
-          opts.ctaLabel
-        )}</a>
+             opts.ctaLabel
+           )}</a>
          </td></tr>`
       : '';
 
@@ -124,7 +205,13 @@ export interface PasswordResetData {
 }
 export interface ScholarshipMatchData {
   fullName?: string;
-  scholarships: Array<{ title: string; hostCountry?: string; matchScore?: number; deadline?: string | Date | null; officialUrl?: string }>;
+  scholarships: Array<{
+    title: string;
+    hostCountry?: string;
+    matchScore?: number;
+    deadline?: string | Date | null;
+    officialUrl?: string;
+  }>;
   appUrl?: string;
 }
 export interface DeadlineReminderData {
@@ -195,8 +282,8 @@ export function renderEmail(event: EmailEvent, data: any): RenderedEmail {
           heading: 'Reset your password',
           bodyHtml: `<p>Hi ${esc(name)},</p>
             <p>We received a request to reset the password for your ${BRAND} account. This link expires in <strong>${esc(
-            mins
-          )} minutes</strong>.</p>
+              mins
+            )} minutes</strong>.</p>
             <p>If you did not request this, you can ignore this email — your password will not change.</p>`,
           ctaLabel: 'Reset password',
           ctaUrl: data.resetUrl,
@@ -222,8 +309,8 @@ export function renderEmail(event: EmailEvent, data: any): RenderedEmail {
             `<li style="margin-bottom:12px;">
                <strong>${esc(s.title)}</strong>${s.hostCountry ? ` — ${esc(s.hostCountry)}` : ''}<br>
                ${s.matchScore !== undefined && s.matchScore !== null ? `Match estimate: <strong>${esc(s.matchScore)}%</strong> · ` : ''}Deadline: ${esc(
-              formatDate(s.deadline)
-            )}
+                 formatDate(s.deadline)
+               )}
                ${s.officialUrl ? `<br><a href="${esc(s.officialUrl)}" style="color:#4f46e5;">Official page</a>` : ''}
              </li>`
         )
@@ -292,7 +379,9 @@ export function renderEmail(event: EmailEvent, data: any): RenderedEmail {
 
     case 'application-update': {
       const url = data.appUrl || appLink('/applications');
-      const readable = String(data.status || '').replace(/_/g, ' ').toLowerCase();
+      const readable = String(data.status || '')
+        .replace(/_/g, ' ')
+        .toLowerCase();
       return {
         subject: `Application update: ${data.scholarshipTitle}`.slice(0, 140),
         html: layout({
@@ -329,7 +418,12 @@ export function renderEmail(event: EmailEvent, data: any): RenderedEmail {
  * Never throws. Failures are logged and reported to Sentry, then returned as
  * `{ sent: false }` so the caller can decide whether it matters.
  */
-async function sendRendered(to: string, rendered: RenderedEmail, event: EmailEvent, userId?: string): Promise<EmailResult> {
+async function sendRendered(
+  to: string,
+  rendered: RenderedEmail,
+  event: EmailEvent,
+  userId?: string
+): Promise<EmailResult> {
   const recipient = String(to || '').trim();
 
   if (!recipient || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recipient)) {
@@ -339,7 +433,9 @@ async function sendRendered(to: string, rendered: RenderedEmail, event: EmailEve
 
   const resend = getResend();
 
-  if (resend && config.resend.fromEmail) {
+  // isResendConfigured() — not just "a key exists" — so a sender Resend is guaranteed to
+  // reject does not consume every send attempt before the SMTP fallback gets a turn.
+  if (resend && isResendConfigured()) {
     try {
       const { data, error } = await resend.emails.send({
         from: fromAddress(),
@@ -358,11 +454,46 @@ async function sendRendered(to: string, rendered: RenderedEmail, event: EmailEve
       logger.info('Email sent via Resend', { event, id: data?.id });
       return { sent: true, channel: 'resend', id: data?.id };
     } catch (err: any) {
-      logger.error('Resend delivery failed', { event, message: err?.message });
+      const message = String(err?.message || '');
+
+      /**
+       * Resend returns 403 validation_error for two permanent configuration faults:
+       * an unverified sender domain, and the sandbox sender used for a recipient other
+       * than the account owner. Neither is retryable and neither is an outage, so they
+       * are logged with the actual remedy instead of a generic delivery failure — the
+       * previous behaviour made a config mistake indistinguishable from a provider blip.
+       */
+      const isUnverifiedDomain = /domain is not verified/i.test(message);
+      const isSandboxRecipient = /only send testing emails to your own email address/i.test(message);
+
+      if (isUnverifiedDomain) {
+        logger.error('Resend rejected the sender — configuration fault, not an outage', {
+          event,
+          sender: config.resend.fromEmail,
+          remedy: `Verify the domain at https://resend.com/domains, or set RESEND_FROM_EMAIL=${RESEND_SANDBOX_SENDER} for local testing.`,
+        });
+      } else if (isSandboxRecipient) {
+        logger.error(
+          "Resend sandbox sender cannot reach this recipient — it only delivers to the account owner's address",
+          {
+            event,
+            recipient,
+            remedy: 'Verify a domain at https://resend.com/domains and set RESEND_FROM_EMAIL to an address on it.',
+          }
+        );
+      } else {
+        logger.error('Resend delivery failed', { event, message });
+      }
+
       captureException(err, {
         area: 'email',
         userId,
-        extra: { event, transport: 'resend', subject: rendered.subject },
+        extra: {
+          event,
+          transport: 'resend',
+          subject: rendered.subject,
+          configFault: isUnverifiedDomain || isSandboxRecipient,
+        },
       });
       // Fall through to SMTP so a provider outage is not a total loss.
     }
@@ -373,25 +504,36 @@ async function sendRendered(to: string, rendered: RenderedEmail, event: EmailEve
     const result = await deliverMessages([{ to: recipient, subject: rendered.subject, text: rendered.text }]);
 
     if (result.delivered > 0) {
-      logger.info('Email sent via SMTP fallback', { event });
-      return { sent: true, channel: 'smtp' };
+      logger.info('Email delivered by the fallback transport', { event, channel: result.channel });
+      return { sent: true, channel: result.channel };
     }
 
     if (result.channel === 'log') {
       logger.info('Email not dispatched — no transport configured (logged only)', { event, to: recipient });
-      return { sent: false, channel: 'log', error: 'No email transport configured (RESEND_API_KEY / SMTP_HOST unset).' };
+      return {
+        sent: false,
+        channel: 'log',
+        error: 'No email transport configured (RESEND_API_KEY / SMTP_HOST unset).',
+      };
     }
 
-    const detail = result.errors[0] || 'SMTP delivery failed.';
+    /**
+     * Report the channel that actually failed.
+     *
+     * This used to hardcode 'smtp' for any non-log failure, so a Resend rejection with no
+     * SMTP configured at all was reported as `channel: "smtp"` — pointing whoever read it
+     * at a transport that was never involved.
+     */
+    const detail = result.errors[0] || `${result.channel} delivery failed.`;
     captureMessage('Email delivery failed on all transports', {
       area: 'email',
       userId,
-      extra: { event, detail },
+      extra: { event, detail, channel: result.channel },
     });
-    return { sent: false, channel: 'smtp', error: detail };
+    return { sent: false, channel: result.channel, error: detail };
   } catch (err: any) {
     logger.error('Email delivery failed', { event, message: err?.message });
-    captureException(err, { area: 'email', userId, extra: { event, transport: 'smtp' } });
+    captureException(err, { area: 'email', userId, extra: { event, transport: 'fallback' } });
     return { sent: false, channel: 'log', error: err?.message || 'Email delivery failed.' };
   }
 }
@@ -408,12 +550,50 @@ export class EmailService {
     return isResendConfigured() || Boolean(config.smtp.host);
   }
 
-  /** Describes the active transport, for boot logging and health output. */
+  /**
+   * Describes the active transport, for boot logging and health output.
+   *
+   * Deliberately reports *problems*, not just presence. An earlier version answered
+   * "resend (from …)" whenever a key and an address were both set, which meant a sender
+   * Resend would always reject was reported as a healthy transport.
+   */
   static describeTransport(): string {
-    if (isResendConfigured()) return `resend (from ${config.resend.fromEmail})`;
-    if (config.resend.apiKey && !config.resend.fromEmail) return 'resend key set but RESEND_FROM_EMAIL missing — falling back';
+    const senderProblem = describeResendSenderProblem();
+
+    if (senderProblem) {
+      return config.smtp.host
+        ? `smtp (${config.smtp.host}:${config.smtp.port}) — Resend key set but its sender is unusable`
+        : 'none (emails are logged only) — Resend key set but its sender is unusable';
+    }
+    if (isResendConfigured()) {
+      return isSandboxSender()
+        ? `resend sandbox (from ${config.resend.fromEmail}) — delivers ONLY to the Resend account owner`
+        : `resend (from ${config.resend.fromEmail})`;
+    }
     if (config.smtp.host) return `smtp (${config.smtp.host}:${config.smtp.port})`;
     return 'none (emails are logged only)';
+  }
+
+  /**
+   * Configuration problems worth printing at boot, in the order they should be fixed.
+   * Empty array means the transport looks sound.
+   */
+  static configWarnings(): string[] {
+    const warnings: string[] = [];
+    const senderProblem = describeResendSenderProblem();
+
+    if (senderProblem) warnings.push(senderProblem);
+    if (isResendConfigured() && isSandboxSender()) {
+      warnings.push(
+        `Using Resend's sandbox sender (${config.resend.fromEmail}): delivery is restricted to the ` +
+          `Resend account owner's own address. Any other recipient is rejected with 403. ` +
+          `Verify a domain at https://resend.com/domains and set RESEND_FROM_EMAIL to an address on it before launch.`
+      );
+    }
+    if (!EmailService.isConfigured()) {
+      warnings.push('No usable email transport — transactional emails are written to the log and never sent.');
+    }
+    return warnings;
   }
 
   static sendWelcome(to: string, data: WelcomeData = {}, userId?: string): Promise<EmailResult> {

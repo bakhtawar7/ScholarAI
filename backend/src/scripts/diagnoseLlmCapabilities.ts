@@ -11,7 +11,11 @@ async function tryPlainChat() {
   if (!llm) return 'no LLM client (no API key)';
   try {
     const r = await llm.chat.completions.create(
-      { model: config.openaiModel, messages: [{ role: 'user', content: 'Reply with the single word: OK' }], max_tokens: 2000 },
+      {
+        model: config.openaiModel,
+        messages: [{ role: 'user', content: 'Reply with the single word: OK' }],
+        max_tokens: 2000,
+      },
       { timeout: 30_000 }
     );
     return `OK — content="${(r.choices?.[0]?.message?.content || '').trim().slice(0, 40)}"`;

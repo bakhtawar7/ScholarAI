@@ -9,7 +9,7 @@ export const automationPaths = {
       summary: 'Workflow catalogue and scheduler state (admin)',
       responses: {
         200: {
-          description: 'Registered workflows with each one\'s last run.',
+          description: "Registered workflows with each one's last run.",
           content: {
             'application/json': {
               schema: {
@@ -52,7 +52,12 @@ export const automationPaths = {
       tags: ['Automation'],
       summary: 'Workflow execution history (admin)',
       parameters: [
-        { name: 'workflowKey', in: 'query', schema: { type: 'string', maxLength: 64 }, description: 'Filter to one workflow.' },
+        {
+          name: 'workflowKey',
+          in: 'query',
+          schema: { type: 'string', maxLength: 64 },
+          description: 'Filter to one workflow.',
+        },
         {
           name: 'status',
           in: 'query',
@@ -91,9 +96,7 @@ export const automationPaths = {
     get: {
       tags: ['Automation'],
       summary: 'Get one workflow run (admin)',
-      parameters: [
-        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-      ],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
         200: {
           description: 'The run record.',

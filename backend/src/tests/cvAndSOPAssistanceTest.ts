@@ -76,19 +76,28 @@ RESEARCH & PUBLICATIONS
     const cvAnalysis = await CVAnalysisService.analyzeCV(testUser.id, sampleCVText);
     console.log(`✅ [2/7] CV Analysis Completed:`);
     console.log(`   - Overall Score: ${cvAnalysis.score} / 100`);
-    console.log(`   - Extracted Skills (${cvAnalysis.extractedEntities.skills.length}): ${cvAnalysis.extractedEntities.skills.slice(0, 5).join(', ')}`);
+    console.log(
+      `   - Extracted Skills (${cvAnalysis.extractedEntities.skills.length}): ${cvAnalysis.extractedEntities.skills.slice(0, 5).join(', ')}`
+    );
     console.log(`   - Education: ${cvAnalysis.extractedEntities.education.join(' | ')}`);
     console.log(`   - Achievements: ${cvAnalysis.extractedEntities.achievements.join(', ')}`);
     console.log(`   - Research: ${cvAnalysis.extractedEntities.research.join(', ')}`);
     console.log(`   - Dimension Scores:`, cvAnalysis.dimensionScores);
-    console.log(`   - Missing Info Identified (${cvAnalysis.missingInformation.length}):`, cvAnalysis.missingInformation[0]);
+    console.log(
+      `   - Missing Info Identified (${cvAnalysis.missingInformation.length}):`,
+      cvAnalysis.missingInformation[0]
+    );
 
     if (!cvAnalysis.score || cvAnalysis.extractedEntities.skills.length === 0) {
       throw new Error('CV analysis failed to extract score or skills.');
     }
 
     // 3. Test Profile Synchronization
-    const syncRes = await CVAnalysisService.syncToProfile(testUser.id, cvAnalysis.extractedEntities.skills, 'Thesis on BFT Consensus');
+    const syncRes = await CVAnalysisService.syncToProfile(
+      testUser.id,
+      cvAnalysis.extractedEntities.skills,
+      'Thesis on BFT Consensus'
+    );
     console.log(`✅ [3/7] Profile Sync: ${syncRes.message}`);
 
     const updatedProfile = await prisma.studentProfile.findUnique({ where: { userId: testUser.id } });
@@ -104,7 +113,9 @@ RESEARCH & PUBLICATIONS
       'Computer Science'
     );
     console.log(`✅ [4/7] SOP Guided Discovery Questions generated (${questionsRes.questions.length} questions):`);
-    console.log(`   - Q1: ${questionsRes.questions[0].category} -> "${questionsRes.questions[0].question.slice(0, 60)}..."`);
+    console.log(
+      `   - Q1: ${questionsRes.questions[0].category} -> "${questionsRes.questions[0].question.slice(0, 60)}..."`
+    );
 
     // 5. Test SOP 5-Paragraph Outline
     const outlineRes = await SOPAssistantService.generateStructuredOutline(
@@ -143,7 +154,9 @@ Following graduation, my five-year career vision is to serve as a Senior Distrib
     console.log(`   - Alignment Score: ${sopAnalysis.feedback.alignmentScore}%`);
     console.log(`   - Structure Rating: ${sopAnalysis.feedback.structureRating}`);
     console.log(`   - Clarity Score: ${sopAnalysis.feedback.clarityScore}%`);
-    console.log(`   - Strengths (${sopAnalysis.feedback.keyStrengths.length}): ${sopAnalysis.feedback.keyStrengths[0]}`);
+    console.log(
+      `   - Strengths (${sopAnalysis.feedback.keyStrengths.length}): ${sopAnalysis.feedback.keyStrengths[0]}`
+    );
     console.log(`   - Section Breakdown (${sopAnalysis.feedback.sectionBreakdown.length} sections analyzed):`);
     sopAnalysis.feedback.sectionBreakdown.forEach((sec) => {
       console.log(`     * [${sec.status}] ${sec.section} -> ${sec.feedback.slice(0, 50)}...`);
@@ -165,13 +178,25 @@ Following graduation, my five-year career vision is to serve as a Senior Distrib
     const cvToolResult = await executeToolCall('getCVAnalysis', {}, testUser.id);
     console.log(`   - getCVAnalysis Tool Execution: Score = ${cvToolResult.score || cvToolResult.message}`);
 
-    const sopReviewToolResult = await executeToolCall('reviewSOPDraft', { draftText: sampleSOPDraft.slice(0, 300) }, testUser.id);
+    const sopReviewToolResult = await executeToolCall(
+      'reviewSOPDraft',
+      { draftText: sampleSOPDraft.slice(0, 300) },
+      testUser.id
+    );
     console.log(`   - reviewSOPDraft Tool Execution: Alignment = ${sopReviewToolResult.alignmentScore}%`);
 
-    const sopOutlineToolResult = await executeToolCall('getSOPOutline', { targetScholarshipTitle: 'DAAD Scholarship' }, testUser.id);
+    const sopOutlineToolResult = await executeToolCall(
+      'getSOPOutline',
+      { targetScholarshipTitle: 'DAAD Scholarship' },
+      testUser.id
+    );
     console.log(`   - getSOPOutline Tool Execution: Outline Sections = ${sopOutlineToolResult.outline?.length}`);
 
-    const sopQuestionsToolResult = await executeToolCall('getSOPQuestions', { fieldOfStudy: 'Computer Science' }, testUser.id);
+    const sopQuestionsToolResult = await executeToolCall(
+      'getSOPQuestions',
+      { fieldOfStudy: 'Computer Science' },
+      testUser.id
+    );
     console.log(`   - getSOPQuestions Tool Execution: Questions = ${sopQuestionsToolResult.questions?.length}`);
 
     console.log('\n========================================');

@@ -3,7 +3,7 @@ import { config } from '../config';
 type Level = 'debug' | 'info' | 'warn' | 'error';
 
 const LEVEL_ORDER: Record<Level, number> = { debug: 10, info: 20, warn: 30, error: 40 };
-const threshold = LEVEL_ORDER[(config.logLevel as Level)] ?? LEVEL_ORDER.info;
+const threshold = LEVEL_ORDER[config.logLevel as Level] ?? LEVEL_ORDER.info;
 
 /** Field names whose values must never reach the logs. */
 const REDACTED_KEYS = new Set([

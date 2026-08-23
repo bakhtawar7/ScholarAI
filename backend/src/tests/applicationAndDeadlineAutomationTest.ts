@@ -55,7 +55,7 @@ async function runApplicationAndDeadlineTests() {
   const now = new Date();
   const dateIn7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const dateIn14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-  const dateIn30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const _dateIn30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const dateExpired = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
 
   const sch7Days = await prisma.scholarship.create({
@@ -101,7 +101,10 @@ async function runApplicationAndDeadlineTests() {
   // ----------------------------------------------------
   {
     const saved = await SavedService.saveScholarship(userId, sch7Days.id);
-    assert(Boolean(saved && saved.scholarshipId === sch7Days.id), 'Test 1: Successfully save scholarship to user account');
+    assert(
+      Boolean(saved && saved.scholarshipId === sch7Days.id),
+      'Test 1: Successfully save scholarship to user account'
+    );
   }
 
   // ----------------------------------------------------
@@ -109,9 +112,17 @@ async function runApplicationAndDeadlineTests() {
   // ----------------------------------------------------
   let appRecord: any;
   {
-    appRecord = await ApplicationService.createApplication(userId, sch7Days.id, 'INTERESTED', 'Initial exploration note');
+    appRecord = await ApplicationService.createApplication(
+      userId,
+      sch7Days.id,
+      'INTERESTED',
+      'Initial exploration note'
+    );
     assert(appRecord && appRecord.status === 'INTERESTED', 'Test 2a: Create application in INTERESTED status');
-    assert(Array.isArray(appRecord.checklists) && appRecord.checklists.length >= 6, 'Test 2b: Automatically generates standard & required document checklist items');
+    assert(
+      Array.isArray(appRecord.checklists) && appRecord.checklists.length >= 6,
+      'Test 2b: Automatically generates standard & required document checklist items'
+    );
   }
 
   // ----------------------------------------------------
@@ -126,7 +137,10 @@ async function runApplicationAndDeadlineTests() {
       if (updated.status !== st) statusSuccess = false;
     }
 
-    assert(statusSuccess, 'Test 3: Supports transitions across all 7 statuses (INTERESTED, PREPARING, READY_TO_APPLY, APPLIED, INTERVIEW, ACCEPTED, REJECTED)');
+    assert(
+      statusSuccess,
+      'Test 3: Supports transitions across all 7 statuses (INTERESTED, PREPARING, READY_TO_APPLY, APPLIED, INTERVIEW, ACCEPTED, REJECTED)'
+    );
   }
 
   // ----------------------------------------------------
@@ -156,7 +170,10 @@ async function runApplicationAndDeadlineTests() {
   {
     // Add custom task
     const newTask = await ApplicationService.addChecklistItem(appRecord.id, userId, 'Contact Professor Dr. Weber');
-    assert(newTask && newTask.item === 'Contact Professor Dr. Weber' && !newTask.isCompleted, 'Test 5a: Add custom checklist task');
+    assert(
+      newTask && newTask.item === 'Contact Professor Dr. Weber' && !newTask.isCompleted,
+      'Test 5a: Add custom checklist task'
+    );
 
     // Toggle completion
     const toggled = await ApplicationService.toggleChecklistItem(newTask.id, userId);
@@ -261,7 +278,9 @@ async function runApplicationAndDeadlineTests() {
   });
 
   console.log(`\n======================================================`);
-  console.log(`Application & Deadline Test Results: ${passed}/${total} Passed (${Math.round((passed / total) * 100)}%)`);
+  console.log(
+    `Application & Deadline Test Results: ${passed}/${total} Passed (${Math.round((passed / total) * 100)}%)`
+  );
   console.log(`======================================================\n`);
 
   if (passed === total) {

@@ -63,12 +63,51 @@ export class CVAnalysisService {
 
     // 2. Skills extraction
     const skillDictionary = [
-      'Python', 'JavaScript', 'TypeScript', 'React', 'Node.js', 'Express', 'Django', 'Flask',
-      'Java', 'C++', 'C#', 'SQL', 'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Docker',
-      'Kubernetes', 'AWS', 'Azure', 'GCP', 'Git', 'Linux', 'Machine Learning', 'Deep Learning',
-      'TensorFlow', 'PyTorch', 'Data Analysis', 'Pandas', 'NumPy', 'Scikit-Learn', 'REST API',
-      'GraphQL', 'Tailwind CSS', 'Next.js', 'NLP', 'Computer Vision', 'CI/CD', 'Agile', 'Scrum',
-      'Microservices', 'Distributed Systems', 'System Design', 'Algorithms', 'Data Structures'
+      'Python',
+      'JavaScript',
+      'TypeScript',
+      'React',
+      'Node.js',
+      'Express',
+      'Django',
+      'Flask',
+      'Java',
+      'C++',
+      'C#',
+      'SQL',
+      'PostgreSQL',
+      'MySQL',
+      'MongoDB',
+      'Redis',
+      'Docker',
+      'Kubernetes',
+      'AWS',
+      'Azure',
+      'GCP',
+      'Git',
+      'Linux',
+      'Machine Learning',
+      'Deep Learning',
+      'TensorFlow',
+      'PyTorch',
+      'Data Analysis',
+      'Pandas',
+      'NumPy',
+      'Scikit-Learn',
+      'REST API',
+      'GraphQL',
+      'Tailwind CSS',
+      'Next.js',
+      'NLP',
+      'Computer Vision',
+      'CI/CD',
+      'Agile',
+      'Scrum',
+      'Microservices',
+      'Distributed Systems',
+      'System Design',
+      'Algorithms',
+      'Data Structures',
     ];
     const foundSkills: string[] = [];
     for (const skill of skillDictionary) {
@@ -80,17 +119,29 @@ export class CVAnalysisService {
 
     // 3. Projects extraction
     const foundProjects: string[] = [];
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    const lines = text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
     let inProjectsSection = false;
     for (const line of lines) {
       if (/^(projects|academic projects|key projects|engineering projects|capstone)/i.test(line)) {
         inProjectsSection = true;
         continue;
       }
-      if (inProjectsSection && /^(experience|work experience|education|skills|certifications|publications|awards)/i.test(line)) {
+      if (
+        inProjectsSection &&
+        /^(experience|work experience|education|skills|certifications|publications|awards)/i.test(line)
+      ) {
         inProjectsSection = false;
       }
-      if (inProjectsSection && (line.startsWith('•') || line.startsWith('-') || line.startsWith('*') || /^[A-Z][A-Za-z0-9\s]{3,35}:/.test(line))) {
+      if (
+        inProjectsSection &&
+        (line.startsWith('•') ||
+          line.startsWith('-') ||
+          line.startsWith('*') ||
+          /^[A-Z][A-Za-z0-9\s]{3,35}:/.test(line))
+      ) {
         const clean = line.replace(/^[•\-*]\s*/, '').trim();
         if (clean.length > 10 && clean.length < 120 && !foundProjects.includes(clean)) {
           foundProjects.push(clean);
@@ -110,7 +161,8 @@ export class CVAnalysisService {
 
     // 4. Experience extraction
     const foundExperience: string[] = [];
-    const expRegex = /(?:intern|engineer|developer|researcher|assistant|lead|manager|analyst|instructor|tutor|specialist)\b[^\n,.]*/gi;
+    const expRegex =
+      /(?:intern|engineer|developer|researcher|assistant|lead|manager|analyst|instructor|tutor|specialist)\b[^\n,.]*/gi;
     let em;
     while ((em = expRegex.exec(text)) !== null) {
       const expTitle = em[0].trim().replace(/\n/g, ' ');
@@ -121,7 +173,8 @@ export class CVAnalysisService {
 
     // 5. Research extraction
     const foundResearch: string[] = [];
-    const researchKeywords = /(?:thesis|publication|conference|paper|journal|arxiv|ieee|acm|springer|preprint|doi:|research on)\s*([^\n;]{10,80})/gi;
+    const researchKeywords =
+      /(?:thesis|publication|conference|paper|journal|arxiv|ieee|acm|springer|preprint|doi:|research on)\s*([^\n;]{10,80})/gi;
     let rm;
     while ((rm = researchKeywords.exec(text)) !== null) {
       const r = rm[0].trim().replace(/\n/g, ' ');
@@ -132,7 +185,8 @@ export class CVAnalysisService {
 
     // 6. Achievements extraction (strict, only if present in text)
     const foundAchievements: string[] = [];
-    const achRegex = /(?:dean's\s+list|honor\s+roll|scholarship\s+recipient|award(?:ed)?|medal|1st\s+place|first\s+place|hackathon\s+winner|merit\s+award|fellowship)\s*([^\n;]{0,60})/gi;
+    const achRegex =
+      /(?:dean's\s+list|honor\s+roll|scholarship\s+recipient|award(?:ed)?|medal|1st\s+place|first\s+place|hackathon\s+winner|merit\s+award|fellowship)\s*([^\n;]{0,60})/gi;
     let am;
     while ((am = achRegex.exec(text)) !== null) {
       const ach = am[0].trim().replace(/\n/g, ' ');
@@ -152,7 +206,11 @@ export class CVAnalysisService {
     if (foundResearch.length === 0) {
       missing.push('Explicit research publications, thesis title, or academic conference contributions.');
     }
-    if (!/\b(\d+%\s*(?:increase|decrease|faster|reduction|improvement|accuracy)|\$\d+|\d+\s*(?:users|clients|students|requests))\b/i.test(text)) {
+    if (
+      !/\b(\d+%\s*(?:increase|decrease|faster|reduction|improvement|accuracy)|\$\d+|\d+\s*(?:users|clients|students|requests))\b/i.test(
+        text
+      )
+    ) {
       missing.push('Quantified metrics demonstrating impact in project/work bullets (e.g. "reduced latency by 35%").');
     }
     if (!/(references|referees|available upon request|prof\.|professor)/i.test(lower)) {
@@ -174,25 +232,37 @@ export class CVAnalysisService {
 
     const overallScore = Math.round(
       educationScore * 0.2 +
-      skillsScore * 0.15 +
-      projectsScore * 0.15 +
-      experienceScore * 0.15 +
-      researchScore * 0.15 +
-      clarityScore * 0.1 +
-      achievementsScore * 0.1
+        skillsScore * 0.15 +
+        projectsScore * 0.15 +
+        experienceScore * 0.15 +
+        researchScore * 0.15 +
+        clarityScore * 0.1 +
+        achievementsScore * 0.1
     );
 
     const strengths: string[] = [];
-    if (eduMatches.length > 0) strengths.push(`Verified academic degree credentials in ${eduMatches.slice(0, 2).join(', ')}.`);
+    if (eduMatches.length > 0)
+      strengths.push(`Verified academic degree credentials in ${eduMatches.slice(0, 2).join(', ')}.`);
     if (foundSkills.length >= 4) strengths.push(`Strong core competencies in ${foundSkills.slice(0, 5).join(', ')}.`);
-    if (foundExperience.length > 0) strengths.push(`Demonstrated professional/academic roles including ${foundExperience.slice(0, 3).join(', ')}.`);
-    if (foundResearch.length > 0) strengths.push(`Academic research presence noted: ${foundResearch.slice(0, 2).join('; ')}.`);
+    if (foundExperience.length > 0)
+      strengths.push(`Demonstrated professional/academic roles including ${foundExperience.slice(0, 3).join(', ')}.`);
+    if (foundResearch.length > 0)
+      strengths.push(`Academic research presence noted: ${foundResearch.slice(0, 2).join('; ')}.`);
     if (foundAchievements.length > 0) strengths.push(`Recognized honors: ${foundAchievements.slice(0, 2).join('; ')}.`);
 
     const weaknesses: string[] = [];
-    if (!hasQuantMetrics) weaknesses.push('Action verbs in project and work bullet points lack quantifiable impact percentages or scale metrics.');
-    if (foundResearch.length === 0) weaknesses.push('Research background is understated — scholarship committees value dedicated thesis or publication sections.');
-    if (foundSkills.length < 5) weaknesses.push('Technical and domain tool stack is brief; specify libraries, frameworks, and database technologies.');
+    if (!hasQuantMetrics)
+      weaknesses.push(
+        'Action verbs in project and work bullet points lack quantifiable impact percentages or scale metrics.'
+      );
+    if (foundResearch.length === 0)
+      weaknesses.push(
+        'Research background is understated — scholarship committees value dedicated thesis or publication sections.'
+      );
+    if (foundSkills.length < 5)
+      weaknesses.push(
+        'Technical and domain tool stack is brief; specify libraries, frameworks, and database technologies.'
+      );
 
     const suggestions: string[] = [
       'Format according to standard International Academic / Europass CV guidelines with clear chronological section headers.',
@@ -224,7 +294,8 @@ export class CVAnalysisService {
         research: foundResearch,
       },
       strengths: strengths.length > 0 ? strengths : ['Clear educational progression and foundational coursework.'],
-      weaknesses: weaknesses.length > 0 ? weaknesses : ['Ensure all technical claims are backed with quantifiable results.'],
+      weaknesses:
+        weaknesses.length > 0 ? weaknesses : ['Ensure all technical claims are backed with quantifiable results.'],
       missingInformation: missing,
       suggestions,
       scholarshipFitSummary,
@@ -315,21 +386,26 @@ Return JSON with exact structure:
               achievements: parsed.dimensionScores?.achievements || analysis.dimensionScores.achievements,
               research: parsed.dimensionScores?.research || analysis.dimensionScores.research,
               clarity: parsed.dimensionScores?.clarity || analysis.dimensionScores.clarity,
-              scholarshipRelevance: parsed.dimensionScores?.scholarshipRelevance || analysis.dimensionScores.scholarshipRelevance,
+              scholarshipRelevance:
+                parsed.dimensionScores?.scholarshipRelevance || analysis.dimensionScores.scholarshipRelevance,
             },
             extractedEntities: {
-              education: Array.isArray(parsed.extractedEntities?.education) && parsed.extractedEntities.education.length > 0
-                ? parsed.extractedEntities.education
-                : analysis.extractedEntities.education,
-              skills: Array.isArray(parsed.extractedEntities?.skills) && parsed.extractedEntities.skills.length > 0
-                ? parsed.extractedEntities.skills
-                : analysis.extractedEntities.skills,
-              projects: Array.isArray(parsed.extractedEntities?.projects) && parsed.extractedEntities.projects.length > 0
-                ? parsed.extractedEntities.projects
-                : analysis.extractedEntities.projects,
-              experience: Array.isArray(parsed.extractedEntities?.experience) && parsed.extractedEntities.experience.length > 0
-                ? parsed.extractedEntities.experience
-                : analysis.extractedEntities.experience,
+              education:
+                Array.isArray(parsed.extractedEntities?.education) && parsed.extractedEntities.education.length > 0
+                  ? parsed.extractedEntities.education
+                  : analysis.extractedEntities.education,
+              skills:
+                Array.isArray(parsed.extractedEntities?.skills) && parsed.extractedEntities.skills.length > 0
+                  ? parsed.extractedEntities.skills
+                  : analysis.extractedEntities.skills,
+              projects:
+                Array.isArray(parsed.extractedEntities?.projects) && parsed.extractedEntities.projects.length > 0
+                  ? parsed.extractedEntities.projects
+                  : analysis.extractedEntities.projects,
+              experience:
+                Array.isArray(parsed.extractedEntities?.experience) && parsed.extractedEntities.experience.length > 0
+                  ? parsed.extractedEntities.experience
+                  : analysis.extractedEntities.experience,
               achievements: Array.isArray(parsed.extractedEntities?.achievements)
                 ? parsed.extractedEntities.achievements
                 : analysis.extractedEntities.achievements,

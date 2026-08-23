@@ -13,6 +13,11 @@ model User {
   passwordHash  String
   role          String          @default("STUDENT")
   isVerified    Boolean         @default(false)
+  /// Bumped on every password change and reset. The auth middleware rejects any token
+  /// issued before this instant, which is what makes "log out everywhere" and
+  /// post-reset invalidation actually work — a stateless JWT is otherwise valid until
+  /// it expires, no matter what happens to the account.
+  passwordChangedAt DateTime    @default(now())
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   profile       StudentProfile?
@@ -23,9 +28,31 @@ model User {
   sopSessions   SOPSession[]
   notifications Notification[]
   reminders     Reminder[]
+  passwordResets PasswordResetToken[]
 
   @@index([role])
   @@index([createdAt])
+}
+
+/// Single-use password reset grants.
+///
+/// Only a SHA-256 hash of the token is stored: the plaintext exists solely in the email
+/// that was sent, so a database leak cannot be used to seize accounts. Rows are kept
+/// after use (rather than deleted) so a replayed link can be told apart from an unknown
+/// one, and are purged by the automation health workflow.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  /// Coarse request provenance, for spotting reset-spam against one account.
+  requestedIp String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
 }
 
 model StudentProfile {

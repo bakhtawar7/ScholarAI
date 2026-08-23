@@ -64,7 +64,9 @@ async function main() {
   const available = await listModels();
   console.log('Models visible to this key:', available ? available.length : 'list call failed');
   if (available) {
-    const interesting = available.filter((m: string) => /gemini/.test(m) && !/embedding|imagen|veo|tts|image|native-audio|live/.test(m));
+    const interesting = available.filter(
+      (m: string) => /gemini/.test(m) && !/embedding|imagen|veo|tts|image|native-audio|live/.test(m)
+    );
     console.log(interesting.join('\n'));
   }
   console.log('\n=== grounded search per model ===');

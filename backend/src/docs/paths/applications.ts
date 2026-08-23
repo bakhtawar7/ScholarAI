@@ -4,7 +4,7 @@ export const applicationPaths = {
   '/api/applications': {
     get: {
       tags: ['Applications'],
-      summary: 'List the caller\'s applications',
+      summary: "List the caller's applications",
       description: 'Each application carries its scholarship and checklist items.',
       responses: {
         200: {
@@ -137,7 +137,7 @@ export const applicationPaths = {
       tags: ['Applications'],
       summary: 'Populate the standard document checklist',
       description:
-        'Seeds the application with the scholarship\'s required documents as checklist items. Existing items are preserved.',
+        "Seeds the application with the scholarship's required documents as checklist items. Existing items are preserved.",
       parameters: [{ $ref: '#/components/parameters/ApplicationId' }],
       responses: {
         200: {
@@ -156,7 +156,8 @@ export const applicationPaths = {
     patch: {
       tags: ['Applications'],
       summary: 'Toggle a checklist item',
-      description: 'Flips `isCompleted`. Declared before `/{id}` in the router so `checklist` is never captured as an application id.',
+      description:
+        'Flips `isCompleted`. Declared before `/{id}` in the router so `checklist` is never captured as an application id.',
       parameters: [{ $ref: '#/components/parameters/ChecklistId' }],
       responses: {
         200: {
@@ -215,7 +216,7 @@ export const deadlinePaths = {
       tags: ['Deadlines'],
       summary: 'Run the deadline reminder sweep (admin)',
       description: [
-        'Admin-only: this sweeps **every** user\'s saved and tracked scholarships and writes',
+        "Admin-only: this sweeps **every** user's saved and tracked scholarships and writes",
         'notifications for all of them.',
         '',
         'Reminders fire at the 30/14/7/3/1-day milestones and are deduplicated by a unique',
@@ -227,7 +228,8 @@ export const deadlinePaths = {
           name: 'force',
           in: 'query',
           schema: { type: 'boolean' },
-          description: 'Fold deadlines beyond the widest milestone into the 30-day bucket so a manual run produces output. Can also be sent as `{ "force": true }` in the body.',
+          description:
+            'Fold deadlines beyond the widest milestone into the 30-day bucket so a manual run produces output. Can also be sent as `{ "force": true }` in the body.',
         },
       ],
       requestBody: {
@@ -308,10 +310,9 @@ export const notificationPaths = {
     patch: {
       tags: ['Notifications'],
       summary: 'Mark one notification read',
-      description: 'The write is scoped to the owner, so another user\'s notification cannot be marked read by guessing an id.',
-      parameters: [
-        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-      ],
+      description:
+        "The write is scoped to the owner, so another user's notification cannot be marked read by guessing an id.",
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
         200: {
           description: 'Marked read.',

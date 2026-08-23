@@ -76,7 +76,13 @@ export class ApplicationService {
     }
   }
 
-  static async updateStatus(applicationId: string, userId: string, status: string, notes?: string, submissionDate?: Date) {
+  static async updateStatus(
+    applicationId: string,
+    userId: string,
+    status: string,
+    notes?: string,
+    submissionDate?: Date
+  ) {
     const app = await prisma.application.findFirst({
       where: { id: applicationId, userId },
     });

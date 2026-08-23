@@ -1,5 +1,4 @@
 import { VerificationService } from '../services/verificationService';
-import { ScholarshipService } from '../services/scholarshipService';
 import { prisma } from '../utils/prisma';
 
 async function runVerificationAgentTestSuite() {
@@ -42,7 +41,8 @@ async function runVerificationAgentTestSuite() {
         eligibleNationalities: JSON.stringify([]),
         nationalityRequirements: 'Open to all international applicants globally.',
         languageRequirements: JSON.stringify({ IELTS: 7.0, TOEFL: 100 }),
-        eligibilityDescription: 'Candidates must hold a Bachelor degree in Physics or Computing with quantum mechanics coursework.',
+        eligibilityDescription:
+          'Candidates must hold a Bachelor degree in Physics or Computing with quantum mechanics coursework.',
         requiredDocuments: JSON.stringify(['Transcripts', 'SOP', '2 References', 'CV']),
         applicationProcess: 'Submit dossier via ETH quantum portal.',
         deadline: new Date('2026-12-15'),
@@ -77,7 +77,10 @@ async function runVerificationAgentTestSuite() {
       assert(!!audit, `Field "${rf}" audit exists in report`);
       assert(audit?.value !== undefined && audit?.value !== null, `Field "${rf}" has audited value`);
       assert(!!audit?.source, `Field "${rf}" has audited source`);
-      assert(typeof audit?.confidence === 'number' && audit.confidence >= 0 && audit.confidence <= 1, `Field "${rf}" has confidence score (${audit?.confidence})`);
+      assert(
+        typeof audit?.confidence === 'number' && audit.confidence >= 0 && audit.confidence <= 1,
+        `Field "${rf}" has confidence score (${audit?.confidence})`
+      );
       assert(!!audit?.lastVerifiedDate, `Field "${rf}" has lastVerifiedDate`);
       assert(!!audit?.notes, `Field "${rf}" has audit notes`);
     }

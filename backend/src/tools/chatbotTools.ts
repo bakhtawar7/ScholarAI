@@ -6,6 +6,7 @@ import { DeadlineService } from '../services/deadlineService';
 import { ProfileService } from '../services/profileService';
 import { prisma } from '../utils/prisma';
 import { parseJsonField } from '../utils/jsonHelper';
+import { insensitiveContains } from '../utils/prismaFilters';
 import { logger } from '../utils/logger';
 
 export const toolDefinitions = [
@@ -23,9 +24,13 @@ export const toolDefinitions = [
         properties: {
           query: {
             type: 'string',
-            description: "The user's scholarship request in natural language, e.g. \"fully funded Computer Science master's scholarships in Europe\".",
+            description:
+              'The user\'s scholarship request in natural language, e.g. "fully funded Computer Science master\'s scholarships in Europe".',
           },
-          recencyDays: { type: 'number', description: 'Restrict to pages published within N days when the user asks for recent/new scholarships.' },
+          recencyDays: {
+            type: 'number',
+            description: 'Restrict to pages published within N days when the user asks for recent/new scholarships.',
+          },
           limit: { type: 'number', description: 'Max results to return (default 8, max 20).' },
         },
         required: ['query'],
@@ -38,7 +43,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'searchScholarships',
-      description: 'Searches ONLY the local stored scholarship knowledge base (no live web search). Use for filtering already-known records or when the user explicitly asks about saved/previously seen scholarships. For fresh discovery use discoverScholarships instead.',
+      description:
+        'Searches ONLY the local stored scholarship knowledge base (no live web search). Use for filtering already-known records or when the user explicitly asks about saved/previously seen scholarships. For fresh discovery use discoverScholarships instead.',
       parameters: {
         type: 'object',
         properties: {
@@ -46,7 +52,10 @@ export const toolDefinitions = [
           hostCountry: { type: 'string', description: 'Host country (e.g. "Germany", "United Kingdom", "Canada")' },
           degreeLevel: { type: 'string', description: 'Degree level: "BACHELORS", "MASTERS", "PHD", "POSTDOC"' },
           field: { type: 'string', description: 'Field of study / major (e.g. "Computer Science", "Data Science")' },
-          fundingType: { type: 'string', description: 'Funding type: "FULL_FUNDING", "PARTIAL_FUNDING", "TUITION_ONLY"' },
+          fundingType: {
+            type: 'string',
+            description: 'Funding type: "FULL_FUNDING", "PARTIAL_FUNDING", "TUITION_ONLY"',
+          },
           minGpa: { type: 'number', description: 'Maximum allowable minimum GPA threshold' },
           limit: { type: 'number', description: 'Max number of records to return (default 6)' },
         },
@@ -64,7 +73,10 @@ export const toolDefinitions = [
         type: 'object',
         properties: {
           scholarshipId: { type: 'string', description: 'Unique scholarship UUID' },
-          titleKeyword: { type: 'string', description: 'Title search fallback if UUID is not known (e.g. "DAAD", "Chevening", "Gates Cambridge")' },
+          titleKeyword: {
+            type: 'string',
+            description: 'Title search fallback if UUID is not known (e.g. "DAAD", "Chevening", "Gates Cambridge")',
+          },
         },
       },
     },
@@ -90,7 +102,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'getStudentProfile',
-      description: 'Retrieve the active authenticated student profile (Degree, GPA, Field of Study, Nationality, Target Countries, Language test scores).',
+      description:
+        'Retrieve the active authenticated student profile (Degree, GPA, Field of Study, Nationality, Target Countries, Language test scores).',
       parameters: {
         type: 'object',
         properties: {},
@@ -103,7 +116,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'checkEligibility',
-      description: 'Analyze student eligibility for a specific scholarship, returning matchScore (0-100), eligibilityStatus (ELIGIBLE, POTENTIALLY_ELIGIBLE, NOT_ELIGIBLE, INSUFFICIENT_INFORMATION), matchingCriteria, missingCriteria, uncertainCriteria, warnings, and recommendations.',
+      description:
+        'Analyze student eligibility for a specific scholarship, returning matchScore (0-100), eligibilityStatus (ELIGIBLE, POTENTIALLY_ELIGIBLE, NOT_ELIGIBLE, INSUFFICIENT_INFORMATION), matchingCriteria, missingCriteria, uncertainCriteria, warnings, and recommendations.',
       parameters: {
         type: 'object',
         properties: {
@@ -119,7 +133,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'getRecommendations',
-      description: 'Get top personalized scholarship recommendations for the student, sorted by match percentage and compatibility.',
+      description:
+        'Get top personalized scholarship recommendations for the student, sorted by match percentage and compatibility.',
       parameters: {
         type: 'object',
         properties: {
@@ -134,7 +149,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'compareScholarships',
-      description: 'Compare 2 or 3 scholarships side-by-side on funding, stipend, tuition waiver, housing, flight, GPA requirements, eligible nationalities, and deadlines.',
+      description:
+        'Compare 2 or 3 scholarships side-by-side on funding, stipend, tuition waiver, housing, flight, GPA requirements, eligible nationalities, and deadlines.',
       parameters: {
         type: 'object',
         properties: {
@@ -209,7 +225,10 @@ export const toolDefinitions = [
         properties: {
           scholarshipId: { type: 'string', description: 'Scholarship UUID' },
           titleKeyword: { type: 'string', description: 'Title search keyword if UUID is unknown' },
-          status: { type: 'string', description: 'Initial status: "INTERESTED", "PREPARING", "READY_TO_APPLY", "APPLIED"' },
+          status: {
+            type: 'string',
+            description: 'Initial status: "INTERESTED", "PREPARING", "READY_TO_APPLY", "APPLIED"',
+          },
           notes: { type: 'string', description: 'Optional initial notes for the application' },
         },
       },
@@ -221,11 +240,15 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'getApplications',
-      description: 'Fetch all tracked scholarship applications for the authenticated user, including checklist progress and status.',
+      description:
+        'Fetch all tracked scholarship applications for the authenticated user, including checklist progress and status.',
       parameters: {
         type: 'object',
         properties: {
-          statusFilter: { type: 'string', description: 'Optional status filter ("INTERESTED", "PREPARING", "APPLIED", "ACCEPTED")' },
+          statusFilter: {
+            type: 'string',
+            description: 'Optional status filter ("INTERESTED", "PREPARING", "APPLIED", "ACCEPTED")',
+          },
         },
       },
     },
@@ -241,8 +264,15 @@ export const toolDefinitions = [
         type: 'object',
         properties: {
           applicationId: { type: 'string', description: 'Application record UUID' },
-          scholarshipId: { type: 'string', description: 'Scholarship UUID (fallback if applicationId is not provided)' },
-          status: { type: 'string', description: 'New status: "INTERESTED", "PREPARING", "READY_TO_APPLY", "APPLIED", "INTERVIEW", "ACCEPTED", "REJECTED"' },
+          scholarshipId: {
+            type: 'string',
+            description: 'Scholarship UUID (fallback if applicationId is not provided)',
+          },
+          status: {
+            type: 'string',
+            description:
+              'New status: "INTERESTED", "PREPARING", "READY_TO_APPLY", "APPLIED", "INTERVIEW", "ACCEPTED", "REJECTED"',
+          },
           notes: { type: 'string', description: 'Updated notes' },
         },
         required: ['status'],
@@ -255,7 +285,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'getUpcomingDeadlines',
-      description: 'Fetch upcoming application deadlines for saved and tracked scholarships, categorized by urgency (CRITICAL, URGENT, UPCOMING).',
+      description:
+        'Fetch upcoming application deadlines for saved and tracked scholarships, categorized by urgency (CRITICAL, URGENT, UPCOMING).',
       parameters: {
         type: 'object',
         properties: {
@@ -288,7 +319,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'updateStudentProfile',
-      description: 'Update academic profile attributes for the authenticated student (e.g. GPA, target degree, field of study, nationality, target countries, language test scores).',
+      description:
+        'Update academic profile attributes for the authenticated student (e.g. GPA, target degree, field of study, nationality, target countries, language test scores).',
       parameters: {
         type: 'object',
         properties: {
@@ -299,8 +331,16 @@ export const toolDefinitions = [
           fieldOfStudy: { type: 'string', description: 'Primary field of study / major' },
           nationality: { type: 'string', description: 'Citizenship / nationality' },
           countryOfResidence: { type: 'string', description: 'Country of residence' },
-          targetCountries: { type: 'array', items: { type: 'string' }, description: 'Target countries (e.g. ["Germany", "UK"])' },
-          preferredFields: { type: 'array', items: { type: 'string' }, description: 'Preferred research fields / majors' },
+          targetCountries: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Target countries (e.g. ["Germany", "UK"])',
+          },
+          preferredFields: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Preferred research fields / majors',
+          },
           languageTests: { type: 'object', description: 'Language test scores, e.g. {"IELTS": 7.5, "TOEFL": 105}' },
           workExperienceYears: { type: 'number', description: 'Years of work experience' },
         },
@@ -312,7 +352,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'getCVAnalysis',
-      description: 'Fetch the latest CV analysis report, extracted skills, and format recommendations for the authenticated student.',
+      description:
+        'Fetch the latest CV analysis report, extracted skills, and format recommendations for the authenticated student.',
       parameters: {
         type: 'object',
         properties: {},
@@ -324,7 +365,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'reviewSOPDraft',
-      description: 'Analyze and provide structural, tone, and alignment feedback on a student Statement of Purpose (SOP) draft for an international scholarship without fabricating achievements.',
+      description:
+        'Analyze and provide structural, tone, and alignment feedback on a student Statement of Purpose (SOP) draft for an international scholarship without fabricating achievements.',
       parameters: {
         type: 'object',
         properties: {
@@ -340,7 +382,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'getSOPOutline',
-      description: 'Generate a structured 5-paragraph Statement of Purpose outline tailored to the student profile and target scholarship.',
+      description:
+        'Generate a structured 5-paragraph Statement of Purpose outline tailored to the student profile and target scholarship.',
       parameters: {
         type: 'object',
         properties: {
@@ -354,7 +397,8 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'getSOPQuestions',
-      description: 'Generate guided discovery and brainstorming questions for writing an authentic Statement of Purpose / Motivation Letter.',
+      description:
+        'Generate guided discovery and brainstorming questions for writing an authentic Statement of Purpose / Motivation Letter.',
       parameters: {
         type: 'object',
         properties: {
@@ -369,11 +413,15 @@ export const toolDefinitions = [
     type: 'function',
     function: {
       name: 'refineSOPSection',
-      description: 'Polishes and improves clarity, academic diction, active voice, and flow for a specific draft paragraph without fabricating any facts or achievements.',
+      description:
+        'Polishes and improves clarity, academic diction, active voice, and flow for a specific draft paragraph without fabricating any facts or achievements.',
       parameters: {
         type: 'object',
         properties: {
-          sectionTitle: { type: 'string', description: 'Section name (e.g., "Introduction & Hook", "Key Research Project")' },
+          sectionTitle: {
+            type: 'string',
+            description: 'Section name (e.g., "Introduction & Hook", "Key Research Project")',
+          },
           originalText: { type: 'string', description: 'The exact draft text to refine' },
           instructions: { type: 'string', description: 'Optional specific editing guidelines' },
         },
@@ -402,9 +450,9 @@ async function resolveScholarshipId(scholarshipId?: string, titleKeyword?: strin
     const match = await prisma.scholarship.findFirst({
       where: {
         OR: [
-          { title: { contains: cleanKeyword } },
-          { provider: { contains: cleanKeyword } },
-          { university: { contains: cleanKeyword } },
+          { title: insensitiveContains(cleanKeyword) },
+          { provider: insensitiveContains(cleanKeyword) },
+          { university: insensitiveContains(cleanKeyword) },
         ],
       },
       select: { id: true },
@@ -523,7 +571,9 @@ export async function executeToolCall(toolName: string, args: any, userId: strin
       case 'getScholarship': {
         const resolvedId = await resolveScholarshipId(args.scholarshipId, args.titleKeyword);
         if (!resolvedId) {
-          return { error: `Scholarship not found with provided ID or title: "${args.titleKeyword || args.scholarshipId}"` };
+          return {
+            error: `Scholarship not found with provided ID or title: "${args.titleKeyword || args.scholarshipId}"`,
+          };
         }
 
         const scholarship = await ScholarshipService.getScholarshipById(resolvedId, userId);
@@ -585,7 +635,9 @@ export async function executeToolCall(toolName: string, args: any, userId: strin
       case 'checkEligibility': {
         const resolvedId = await resolveScholarshipId(args.scholarshipId, args.titleKeyword);
         if (!resolvedId) {
-          return { error: `Scholarship not found to check eligibility for "${args.titleKeyword || args.scholarshipId}"` };
+          return {
+            error: `Scholarship not found to check eligibility for "${args.titleKeyword || args.scholarshipId}"`,
+          };
         }
 
         const scholarship = await prisma.scholarship.findUnique({ where: { id: resolvedId } });
@@ -593,7 +645,9 @@ export async function executeToolCall(toolName: string, args: any, userId: strin
           return { error: 'Scholarship record not found in database.' };
         }
 
-        const eligibility = await MatchingService.getScholarshipEligibilityForUser(resolvedId, userId, { forceRefresh: true });
+        const eligibility = await MatchingService.getScholarshipEligibilityForUser(resolvedId, userId, {
+          forceRefresh: true,
+        });
 
         return {
           scholarshipId: resolvedId,
@@ -634,7 +688,7 @@ export async function executeToolCall(toolName: string, args: any, userId: strin
 
       // 6. compareScholarships
       case 'compareScholarships': {
-        let ids: string[] = Array.isArray(args.scholarshipIds) ? [...new Set(args.scholarshipIds as string[])] : [];
+        const ids: string[] = Array.isArray(args.scholarshipIds) ? [...new Set(args.scholarshipIds as string[])] : [];
 
         if (ids.length === 0 && args.titleKeywords && Array.isArray(args.titleKeywords)) {
           for (const kw of args.titleKeywords) {
@@ -764,7 +818,9 @@ export async function executeToolCall(toolName: string, args: any, userId: strin
       case 'createApplication': {
         const resolvedId = await resolveScholarshipId(args.scholarshipId, args.titleKeyword);
         if (!resolvedId) {
-          return { error: `Cannot track application: Scholarship not found for "${args.titleKeyword || args.scholarshipId}"` };
+          return {
+            error: `Cannot track application: Scholarship not found for "${args.titleKeyword || args.scholarshipId}"`,
+          };
         }
 
         const initialStatus = args.status || 'INTERESTED';
@@ -948,7 +1004,9 @@ export async function executeToolCall(toolName: string, args: any, userId: strin
         }
         const latest = await cvService.getLatestAnalysis(userId);
         if (!latest) {
-          return { message: 'No CV analysis found on record. Upload your CV under AI Preparation Tools to generate feedback.' };
+          return {
+            message: 'No CV analysis found on record. Upload your CV under AI Preparation Tools to generate feedback.',
+          };
         }
         return latest;
       }

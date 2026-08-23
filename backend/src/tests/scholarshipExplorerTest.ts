@@ -25,8 +25,21 @@ async function runScholarshipModuleTests() {
     const allScholarships = await prisma.scholarship.findMany();
     assert(allScholarships.length >= 10, `Database contains seeded scholarships (Count: ${allScholarships.length})`);
 
-    const demoLabeled = allScholarships.filter((s: any) => s.isDemo === true && s.title.includes('[DEMO DATA]'));
-    assert(demoLabeled.length === allScholarships.length, 'All seeded scholarships are explicitly flagged isDemo=true and labeled [DEMO DATA]');
+    const demoLabeled = allScholarships.filter((s: any) => s.isDemo === true);
+    assert(demoLabeled.length > 0, `Seeded scholarships are flagged isDemo=true (${demoLabeled.length})`);
+
+    /**
+     * The invariant changed deliberately: the "[DEMO DATA] " title prefix was removed by
+     * src/scripts/stripDemoPrefix.ts because it polluted search results and chat replies,
+     * leaving the isDemo boolean as the single source of the badge. This assertion used to
+     * require the prefix and so contradicted that decision — it went unnoticed because the
+     * suite had no npm script and was never run.
+     */
+    const stillPrefixed = allScholarships.filter((s: any) => String(s.title || '').includes('[DEMO DATA]'));
+    assert(
+      stillPrefixed.length === 0,
+      `No scholarship title retains the legacy [DEMO DATA] prefix (found ${stillPrefixed.length})`
+    );
 
     const firstScholarship = allScholarships[0];
     assert(!!firstScholarship.title, 'Scholarship has title field');
@@ -46,7 +59,10 @@ async function runScholarshipModuleTests() {
     console.log('\n🔍 Test Group 2: GET Scholarships & Formatted Architecture');
     const defaultSearch = await ScholarshipService.searchScholarships({ limit: 12, page: 1 });
     assert(defaultSearch.total >= 10, `GET scholarships returned total count: ${defaultSearch.total}`);
-    assert(defaultSearch.items.length >= 10, `GET scholarships returned items array (Length: ${defaultSearch.items.length})`);
+    assert(
+      defaultSearch.items.length >= 10,
+      `GET scholarships returned items array (Length: ${defaultSearch.items.length})`
+    );
     assert(defaultSearch.page === 1, 'Default page is 1');
     assert(defaultSearch.limit === 12, 'Default limit is 12');
 
@@ -55,54 +71,128 @@ async function runScholarshipModuleTests() {
     assert(Array.isArray(formattedItem.fieldsOfStudy), 'fieldsOfStudy is parsed JSON array');
     assert(Array.isArray(formattedItem.requiredDocuments), 'requiredDocuments is parsed JSON array');
     assert(typeof formattedItem.languageRequirements === 'object', 'languageRequirements is parsed JSON object');
-    assert(typeof formattedItem.gpaRequirements === 'string', 'gpaRequirements text is provided');
-    assert(typeof formattedItem.nationalityRequirements === 'string', 'nationalityRequirements text is provided');
-    assert(typeof formattedItem.eligibilityDescription === 'string', 'eligibilityDescription text is provided');
+
+    /**
+     * These three used to assert `typeof === 'string'`, which passed only because
+     * formatScholarship invented prose whenever the column was empty — "No rigid minimum
+     * GPA threshold; holistic academic profile evaluated", "Open to all international
+     * applicants globally", and a synthesised eligibility summary. Those were claims about
+     * a real funding programme that nobody had made, so absent values are now returned as
+     * null and rendered as "Not stated" by the UI.
+     *
+     * The contract is therefore: a non-empty string, or null. Never a placeholder.
+     */
+    const FABRICATED = [
+      'No rigid minimum GPA threshold',
+      'Open to all international applicants globally',
+      'Open to high-achieving candidates',
+      'holistic academic profile evaluated',
+    ];
+
+    for (const field of ['gpaRequirements', 'nationalityRequirements', 'eligibilityDescription'] as const) {
+      const value = (formattedItem as any)[field];
+      assert(
+        value === null || (typeof value === 'string' && value.trim().length > 0),
+        `${field} is a real string or null, never an empty string`,
+        value
+      );
+      assert(
+        typeof value !== 'string' || !FABRICATED.some((f) => value.includes(f)),
+        `${field} carries no fabricated placeholder text`,
+        value
+      );
+    }
+
+    // Same rule for the financial fields: a missing tuition figure must not read as a
+    // favourable one, since a student could choose where to apply based on it.
+    for (const field of ['tuitionCoverage', 'stipendAmount'] as const) {
+      const value = (formattedItem as any)[field];
+      assert(
+        value === null || (typeof value === 'string' && value.trim().length > 0),
+        `${field} is a real string or null`,
+        value
+      );
+    }
 
     // Test 3: Filter Facets
     console.log('\n📊 Test Group 3: Metadata Filter Facets');
     const facets = await ScholarshipService.getFilterFacets();
     assert(facets.countries.length > 0, `Country facets returned (${facets.countries.length} countries)`);
-    assert(facets.fundingTypes.length > 0, `Funding type facets returned (${facets.fundingTypes.length} funding types)`);
-    assert(facets.degreeLevels.length > 0, `Degree level facets returned (${facets.degreeLevels.length} degree levels)`);
+    assert(
+      facets.fundingTypes.length > 0,
+      `Funding type facets returned (${facets.fundingTypes.length} funding types)`
+    );
+    assert(
+      facets.degreeLevels.length > 0,
+      `Degree level facets returned (${facets.degreeLevels.length} degree levels)`
+    );
     assert(facets.fieldsOfStudy.length > 0, `Field of study facets returned (${facets.fieldsOfStudy.length} fields)`);
 
     // Test 4: Keyword Search
     console.log('\n🔎 Test Group 4: Keyword Search');
     const erasmusSearch = await ScholarshipService.searchScholarships({ q: 'Erasmus' });
-    assert(erasmusSearch.items.some((s: any) => s.title.includes('Erasmus')), 'Search by title "Erasmus" returns matching record');
+    assert(
+      erasmusSearch.items.some((s: any) => s.title.includes('Erasmus')),
+      'Search by title "Erasmus" returns matching record'
+    );
 
     const cambridgeSearch = await ScholarshipService.searchScholarships({ q: 'Cambridge' });
-    assert(cambridgeSearch.items.some((s: any) => s.title.includes('Gates Cambridge')), 'Search by university "Cambridge" returns Gates Cambridge');
+    assert(
+      cambridgeSearch.items.some((s: any) => s.title.includes('Gates Cambridge')),
+      'Search by university "Cambridge" returns Gates Cambridge'
+    );
 
     const japanSearch = await ScholarshipService.searchScholarships({ q: 'Japan' });
-    assert(japanSearch.items.some((s: any) => s.country === 'Japan' || s.title.includes('MEXT')), 'Search by country "Japan" returns MEXT scholarship');
+    assert(
+      japanSearch.items.some((s: any) => s.country === 'Japan' || s.title.includes('MEXT')),
+      'Search by country "Japan" returns MEXT scholarship'
+    );
 
     // Test 5: Multi-Faceted Filters
     console.log('\n🎯 Test Group 5: Multi-Faceted Filters');
     // Country Filter
     const germanyOnly = await ScholarshipService.searchScholarships({ hostCountry: 'Germany' });
-    assert(germanyOnly.items.every((s: any) => s.country === 'Germany'), 'Country filter "Germany" only returns German scholarships');
+    assert(
+      germanyOnly.items.every((s: any) => s.country === 'Germany'),
+      'Country filter "Germany" only returns German scholarships'
+    );
 
     // Degree Level Filter
     const phdOnly = await ScholarshipService.searchScholarships({ degreeLevel: 'PHD' });
-    assert(phdOnly.items.every((s: any) => s.degreeLevels.includes('PHD')), 'Degree filter "PHD" only returns PhD-eligible scholarships');
+    assert(
+      phdOnly.items.every((s: any) => s.degreeLevels.includes('PHD')),
+      'Degree filter "PHD" only returns PhD-eligible scholarships'
+    );
 
     // Field Filter
     const aiOnly = await ScholarshipService.searchScholarships({ field: 'Artificial Intelligence' });
-    assert(aiOnly.items.every((s: any) => s.fieldsOfStudy.some((f: any) => f.includes('Artificial Intelligence') || f.includes('Computer Science'))), 'Field filter "Artificial Intelligence" matches computing programs');
+    assert(
+      aiOnly.items.every((s: any) =>
+        s.fieldsOfStudy.some((f: any) => f.includes('Artificial Intelligence') || f.includes('Computer Science'))
+      ),
+      'Field filter "Artificial Intelligence" matches computing programs'
+    );
 
     // Funding Type Filter
     const fullFundingOnly = await ScholarshipService.searchScholarships({ fundingType: 'FULL_FUNDING' });
-    assert(fullFundingOnly.items.every((s: any) => s.fundingType === 'FULL_FUNDING'), 'Funding filter "FULL_FUNDING" returns full funding items');
+    assert(
+      fullFundingOnly.items.every((s: any) => s.fundingType === 'FULL_FUNDING'),
+      'Funding filter "FULL_FUNDING" returns full funding items'
+    );
 
     // Deadline Filter
     const upcomingDeadlines = await ScholarshipService.searchScholarships({ deadline: 'upcoming' });
-    assert(upcomingDeadlines.items.length > 0, `Upcoming deadline filter returned ${upcomingDeadlines.items.length} active scholarships`);
+    assert(
+      upcomingDeadlines.items.length > 0,
+      `Upcoming deadline filter returned ${upcomingDeadlines.items.length} active scholarships`
+    );
 
     // Min GPA Filter
     const gpaFilter = await ScholarshipService.searchScholarships({ minGpa: 3.3 });
-    assert(gpaFilter.items.every((s: any) => s.minGpa === null || s.minGpa <= 3.3), 'minGpa filter 3.3 returns items with minGpa <= 3.3 or null');
+    assert(
+      gpaFilter.items.every((s: any) => s.minGpa === null || s.minGpa <= 3.3),
+      'minGpa filter 3.3 returns items with minGpa <= 3.3 or null'
+    );
 
     // Test 6: Sorting
     console.log('\n🔀 Test Group 6: Sorting Options');
@@ -110,7 +200,9 @@ async function runScholarshipModuleTests() {
     let isDeadlineSorted = true;
     for (let i = 0; i < deadlineAsc.items.length - 1; i++) {
       const d1 = deadlineAsc.items[i]!.deadline ? new Date(deadlineAsc.items[i]!.deadline!).getTime() : Infinity;
-      const d2 = deadlineAsc.items[i + 1]!.deadline ? new Date(deadlineAsc.items[i + 1]!.deadline!).getTime() : Infinity;
+      const d2 = deadlineAsc.items[i + 1]!.deadline
+        ? new Date(deadlineAsc.items[i + 1]!.deadline!).getTime()
+        : Infinity;
       if (d1 > d2) isDeadlineSorted = false;
     }
     assert(isDeadlineSorted, 'sortBy "deadline_asc" correctly sorts by earliest deadline');
@@ -137,7 +229,10 @@ async function runScholarshipModuleTests() {
     const detail = await ScholarshipService.getScholarshipById(targetId);
     assert(!!detail && detail.id === targetId, `Retrieved scholarship by ID: ${detail?.title}`);
     assert(!!detail && detail.officialUrl.startsWith('http'), `Valid officialUrl: ${detail?.officialUrl}`);
-    assert(!!detail && detail.requiredDocuments.length > 0, `Required documents count: ${detail?.requiredDocuments.length}`);
+    assert(
+      !!detail && detail.requiredDocuments.length > 0,
+      `Required documents count: ${detail?.requiredDocuments.length}`
+    );
 
     // Test 9: User Profile Matching & Auth Augmentation
     console.log('\n👤 Test Group 9: User Profile Matching & Status Augmentation');
@@ -155,7 +250,10 @@ async function runScholarshipModuleTests() {
       });
 
       assert(userSearch.items[0]!.userMatch !== null, 'Scholarship response includes computed userMatch object');
-      assert(userSearch.items[0]!.userMatch!.matchPercentage >= 70, `Top match percentage is high (${userSearch.items[0]!.userMatch!.matchPercentage}%)`);
+      assert(
+        userSearch.items[0]!.userMatch!.matchPercentage >= 70,
+        `Top match percentage is high (${userSearch.items[0]!.userMatch!.matchPercentage}%)`
+      );
       assert(userSearch.items[0]!.userMatch!.matchReasons.length > 0, 'Match reasons list is populated');
 
       const savedCount = userSearch.items.filter((s: any) => s.isSaved).length;

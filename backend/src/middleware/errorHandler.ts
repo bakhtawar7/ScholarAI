@@ -39,8 +39,8 @@ export const errorHandler = (err: any, req: Request, res: Response, _next: NextF
   const message = prismaMapping
     ? prismaMapping.message
     : isClientError
-    ? err.message || 'Request could not be processed'
-    : 'Internal Server Error';
+      ? err.message || 'Request could not be processed'
+      : 'Internal Server Error';
 
   const logMeta = {
     method: req.method,

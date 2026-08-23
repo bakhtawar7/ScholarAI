@@ -45,21 +45,25 @@ export class SOPAssistantService {
           category: '1. Intellectual Hook & Core Motivation',
           question: `What specific academic problem, industry challenge, or intellectual curiosity motivated you to pursue a ${degree} in ${field}?`,
           hint: 'Focus on a concrete technical project, research question, or domain challenge rather than generic childhood memories.',
-          placeholder: 'e.g., While developing a real-time distributed stream processor for my capstone, I encountered significant latency bottlenecks under high network partition events...',
+          placeholder:
+            'e.g., While developing a real-time distributed stream processor for my capstone, I encountered significant latency bottlenecks under high network partition events...',
         },
         {
           id: 'q2_academic_prep',
           category: '2. Academic Preparation & Technical Coursework',
-          question: 'Which specific undergraduate courses, engineering projects, or technical milestones prepared you for advanced study in this discipline?',
+          question:
+            'Which specific undergraduate courses, engineering projects, or technical milestones prepared you for advanced study in this discipline?',
           hint: 'Mention 2-3 core subjects or laboratory experiences with concrete methodologies and analytical concepts.',
           placeholder: `e.g., Coursework in Distributed Systems and Advanced Machine Learning at ${profile?.university || 'my university'} built my theoretical foundation...`,
         },
         {
           id: 'q3_research_experience',
           category: '3. Research Methodology & Practical Execution',
-          question: 'What research projects, publications, thesis work, or engineering roles demonstrate your ability to execute rigorous academic work?',
+          question:
+            'What research projects, publications, thesis work, or engineering roles demonstrate your ability to execute rigorous academic work?',
           hint: 'Highlight methodologies, software tools, datasets, experimental findings, or published output.',
-          placeholder: 'e.g., In my senior thesis supervised by Dr. Smith, I engineered an algorithmic optimizer that achieved a 28% throughput improvement...',
+          placeholder:
+            'e.g., In my senior thesis supervised by Dr. Smith, I engineered an algorithmic optimizer that achieved a 28% throughput improvement...',
         },
         {
           id: 'q4_program_fit',
@@ -71,9 +75,11 @@ export class SOPAssistantService {
         {
           id: 'q5_career_vision',
           category: '5. Post-Graduation Vision & Societal Impact',
-          question: 'What are your concrete 5-year post-graduation career goals, and how will you use this scholarship to contribute back to your home country or scientific field?',
+          question:
+            'What are your concrete 5-year post-graduation career goals, and how will you use this scholarship to contribute back to your home country or scientific field?',
           hint: 'Scholarship committees look for clear leadership potential, developmental impact, and return on investment.',
-          placeholder: 'e.g., Upon completing my degree, I plan to establish a collaborative research initiative focused on deploying localized AI healthcare diagnostics...',
+          placeholder:
+            'e.g., Upon completing my degree, I plan to establish a collaborative research initiative focused on deploying localized AI healthcare diagnostics...',
         },
       ],
     };
@@ -82,7 +88,11 @@ export class SOPAssistantService {
   /**
    * Generates a tailored 5-paragraph structured outline based on the user's focus areas.
    */
-  static async generateStructuredOutline(userId: string, targetScholarshipTitle?: string, userInputs?: Record<string, string>) {
+  static async generateStructuredOutline(
+    userId: string,
+    targetScholarshipTitle?: string,
+    userInputs?: Record<string, string>
+  ) {
     const profile = await prisma.studentProfile.findUnique({ where: { userId } });
     const target = targetScholarshipTitle || 'International Academic Scholarship';
 
@@ -92,7 +102,8 @@ export class SOPAssistantService {
         {
           paragraphNumber: 1,
           sectionTitle: 'Compelling Introduction & Clear Academic Objective',
-          purpose: 'Hook the reader with a concrete intellectual question and explicitly declare your target degree program.',
+          purpose:
+            'Hook the reader with a concrete intellectual question and explicitly declare your target degree program.',
           recommendedWordCount: '100 - 150 words',
           userContent: userInputs?.['q1'] || userInputs?.['q1_hook_motivation'] || '',
           keyElements: [
@@ -166,10 +177,18 @@ export class SOPAssistantService {
     const lower = draftText.toLowerCase();
 
     // Deterministic evaluation heuristics
-    const hasProfOrLab = /(prof\.|professor|dr\.|laboratory|research group|institute|curriculum|module)\b/i.test(draftText);
-    const hasCareerGoals = /(career|goal|5-year|future|post-graduation|contribute|return|leadership)\b/i.test(draftText);
-    const hasQuantMetrics = /\b(\d+%\s*(?:increase|improvement|reduction|accuracy)|\d+\s*(?:users|clients|nodes|datasets))\b/i.test(draftText);
-    const hasScholarshipMention = target && target !== 'International Scholarship' ? lower.includes(target.toLowerCase().split(' ')[0]) : true;
+    const hasProfOrLab = /(prof\.|professor|dr\.|laboratory|research group|institute|curriculum|module)\b/i.test(
+      draftText
+    );
+    const hasCareerGoals = /(career|goal|5-year|future|post-graduation|contribute|return|leadership)\b/i.test(
+      draftText
+    );
+    const hasQuantMetrics =
+      /\b(\d+%\s*(?:increase|improvement|reduction|accuracy)|\d+\s*(?:users|clients|nodes|datasets))\b/i.test(
+        draftText
+      );
+    const hasScholarshipMention =
+      target && target !== 'International Scholarship' ? lower.includes(target.toLowerCase().split(' ')[0]) : true;
 
     const missingInfo: string[] = [];
     if (!hasProfOrLab) {
@@ -186,7 +205,10 @@ export class SOPAssistantService {
     }
 
     let feedback: SOPFeedbackResult = {
-      alignmentScore: Math.min(95, Math.max(65, 80 + (hasProfOrLab ? 6 : -4) + (hasCareerGoals ? 5 : -4) + (hasQuantMetrics ? 4 : 0))),
+      alignmentScore: Math.min(
+        95,
+        Math.max(65, 80 + (hasProfOrLab ? 6 : -4) + (hasCareerGoals ? 5 : -4) + (hasQuantMetrics ? 4 : 0))
+      ),
       structureRating: wordCount >= 450 ? 'Strong & Well Structured (4.4 / 5.0)' : 'Moderate Structure (3.6 / 5.0)',
       clarityScore: Math.min(96, Math.max(70, 84 + (wordCount >= 400 ? 5 : -5))),
       relevanceScore: Math.min(95, Math.max(65, 82 + (hasScholarshipMention ? 6 : -4))),
@@ -201,9 +223,10 @@ export class SOPAssistantService {
         'Provide concrete quantifiable outcomes for projects mentioned in the body paragraphs.',
         'Strengthen the opening hook to immediately engage the scholarship selection committee.',
       ],
-      missingInformation: missingInfo.length > 0 ? missingInfo : [
-        'Consider citing 1-2 recent research publications from target department faculty.',
-      ],
+      missingInformation:
+        missingInfo.length > 0
+          ? missingInfo
+          : ['Consider citing 1-2 recent research publications from target department faculty.'],
       sectionBreakdown: [
         {
           section: 'Paragraph 1: Introduction & Academic Hook',
@@ -220,20 +243,27 @@ export class SOPAssistantService {
         {
           section: 'Paragraph 3: Key Research & Engineering Projects',
           status: hasQuantMetrics ? 'STRONG' : 'NEEDS_WORK',
-          feedback: hasQuantMetrics ? 'Solid project presentation with clear metrics.' : 'Project descriptions are slightly conceptual.',
+          feedback: hasQuantMetrics
+            ? 'Solid project presentation with clear metrics.'
+            : 'Project descriptions are slightly conceptual.',
           suggestion: 'Incorporate 1-2 quantified metrics demonstrating technical impact.',
         },
         {
           section: 'Paragraph 4: Program Fit & Institutional Alignment',
           status: hasProfOrLab ? 'STRONG' : 'NEEDS_WORK',
-          feedback: hasProfOrLab ? 'Cites target academic modules.' : 'Mentions country benefits but lacks university-specific professor or laboratory references.',
+          feedback: hasProfOrLab
+            ? 'Cites target academic modules.'
+            : 'Mentions country benefits but lacks university-specific professor or laboratory references.',
           suggestion: 'Cite 1-2 faculty members or specific research centers at the target university.',
         },
         {
           section: 'Paragraph 5: Long-Term Career Vision & Impact',
           status: hasCareerGoals ? 'STRONG' : 'NEEDS_WORK',
-          feedback: hasCareerGoals ? 'Articulates clear career direction.' : 'Post-graduation vision is somewhat generic.',
-          suggestion: 'Add specific milestones (e.g., Year 1-2 research scientist, Year 3-5 lab director or policy contributor).',
+          feedback: hasCareerGoals
+            ? 'Articulates clear career direction.'
+            : 'Post-graduation vision is somewhat generic.',
+          suggestion:
+            'Add specific milestones (e.g., Year 1-2 research scientist, Year 3-5 lab director or policy contributor).',
         },
       ],
       suggestedOutline: [
@@ -289,17 +319,37 @@ Do NOT invent experiences, awards, research, or personal stories. Evaluate stric
         if (content) {
           const parsed = JSON.parse(content);
           feedback = {
-            alignmentScore: parsed.alignmentScore !== undefined ? Number(parsed.alignmentScore) : feedback.alignmentScore,
+            alignmentScore:
+              parsed.alignmentScore !== undefined ? Number(parsed.alignmentScore) : feedback.alignmentScore,
             structureRating: parsed.structureRating || feedback.structureRating,
             clarityScore: parsed.clarityScore !== undefined ? Number(parsed.clarityScore) : feedback.clarityScore,
-            relevanceScore: parsed.relevanceScore !== undefined ? Number(parsed.relevanceScore) : feedback.relevanceScore,
+            relevanceScore:
+              parsed.relevanceScore !== undefined ? Number(parsed.relevanceScore) : feedback.relevanceScore,
             grammarAndTone: parsed.grammarAndTone || feedback.grammarAndTone,
-            keyStrengths: Array.isArray(parsed.keyStrengths) && parsed.keyStrengths.length > 0 ? parsed.keyStrengths : feedback.keyStrengths,
-            areasForImprovement: Array.isArray(parsed.areasForImprovement) && parsed.areasForImprovement.length > 0 ? parsed.areasForImprovement : feedback.areasForImprovement,
-            missingInformation: Array.isArray(parsed.missingInformation) && parsed.missingInformation.length > 0 ? parsed.missingInformation : feedback.missingInformation,
-            sectionBreakdown: Array.isArray(parsed.sectionBreakdown) && parsed.sectionBreakdown.length > 0 ? parsed.sectionBreakdown : feedback.sectionBreakdown,
-            suggestedOutline: Array.isArray(parsed.suggestedOutline) && parsed.suggestedOutline.length > 0 ? parsed.suggestedOutline : feedback.suggestedOutline,
-            actionableNextSteps: Array.isArray(parsed.actionableNextSteps) && parsed.actionableNextSteps.length > 0 ? parsed.actionableNextSteps : feedback.actionableNextSteps,
+            keyStrengths:
+              Array.isArray(parsed.keyStrengths) && parsed.keyStrengths.length > 0
+                ? parsed.keyStrengths
+                : feedback.keyStrengths,
+            areasForImprovement:
+              Array.isArray(parsed.areasForImprovement) && parsed.areasForImprovement.length > 0
+                ? parsed.areasForImprovement
+                : feedback.areasForImprovement,
+            missingInformation:
+              Array.isArray(parsed.missingInformation) && parsed.missingInformation.length > 0
+                ? parsed.missingInformation
+                : feedback.missingInformation,
+            sectionBreakdown:
+              Array.isArray(parsed.sectionBreakdown) && parsed.sectionBreakdown.length > 0
+                ? parsed.sectionBreakdown
+                : feedback.sectionBreakdown,
+            suggestedOutline:
+              Array.isArray(parsed.suggestedOutline) && parsed.suggestedOutline.length > 0
+                ? parsed.suggestedOutline
+                : feedback.suggestedOutline,
+            actionableNextSteps:
+              Array.isArray(parsed.actionableNextSteps) && parsed.actionableNextSteps.length > 0
+                ? parsed.actionableNextSteps
+                : feedback.actionableNextSteps,
           };
         }
       } catch (e: any) {
@@ -331,18 +381,14 @@ Do NOT invent experiences, awards, research, or personal stories. Evaluate stric
    * Refines a specific paragraph or section for clarity, academic diction, and flow
    * strictly adhering to the user's authentic facts (never fabricating credentials).
    */
-  static async refineDraftSection(
-    userId: string,
-    sectionTitle: string,
-    originalText: string,
-    instructions?: string
-  ) {
+  static async refineDraftSection(userId: string, sectionTitle: string, originalText: string, instructions?: string) {
     if (!originalText || !originalText.trim()) {
       throw { statusCode: 400, message: 'originalText is required for refinement' };
     }
 
     let refinedText = originalText;
-    let changesExplanation = 'Enhanced academic vocabulary, converted passive expressions to active voice, and improved sentence cohesion.';
+    let changesExplanation =
+      'Enhanced academic vocabulary, converted passive expressions to active voice, and improved sentence cohesion.';
 
     if (openai) {
       try {
@@ -393,7 +439,8 @@ changesExplanation (string describing what was improved and why).`,
         .replace(/\bThis is good because\b/gi, 'This program provides an exceptional framework because')
         .replace(/\bI worked on\b/gi, 'I engineered and conducted research on')
         .replace(/\bIn conclusion\b/gi, 'Ultimately');
-      changesExplanation = 'Refined sentence structures, replaced informal phrases with academic diction, and eliminated filler words.';
+      changesExplanation =
+        'Refined sentence structures, replaced informal phrases with academic diction, and eliminated filler words.';
     }
 
     return {

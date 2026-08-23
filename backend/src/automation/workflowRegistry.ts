@@ -1,6 +1,6 @@
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
-import { safeJsonStringify, parseJsonField } from '../utils/jsonHelper';
+import { safeJsonStringify } from '../utils/jsonHelper';
 import { MatchingService } from '../services/matchingService';
 import { VerificationService } from '../services/verificationService';
 import { DeadlineAutomationService } from '../services/deadlineAutomationService';
@@ -9,6 +9,7 @@ import { NotificationService } from '../services/notificationService';
 import { ScholarshipService } from '../services/scholarshipService';
 import { deliverMessages, isDeliveryConfigured } from '../services/deliveryService';
 import { EmailService } from '../services/emailService';
+import { AuthService } from '../services/authService';
 import { config } from '../config';
 
 /** Anything a handler returns is persisted as the run's metrics blob. */
@@ -81,8 +82,8 @@ function normaliseDiscoveryRecord(data: any) {
       Array.isArray(data.fieldsOfStudy) && data.fieldsOfStudy.length > 0
         ? data.fieldsOfStudy
         : Array.isArray(data.fields) && data.fields.length > 0
-        ? data.fields
-        : ['General Studies'],
+          ? data.fields
+          : ['General Studies'],
     fundingType: String(data.fundingType || 'FULL_FUNDING'),
     tuitionCoverage: data.tuitionCoverage ?? null,
     stipendAmount: data.stipend ?? data.stipendAmount ?? null,
@@ -94,11 +95,14 @@ function normaliseDiscoveryRecord(data: any) {
     eligibleNationalities: Array.isArray(data.eligibleNationalities) ? data.eligibleNationalities : [],
     nationalityRequirements: data.nationalityRequirements ?? null,
     languageRequirements:
-      typeof data.languageRequirements === 'object' && data.languageRequirements !== null ? data.languageRequirements : {},
+      typeof data.languageRequirements === 'object' && data.languageRequirements !== null
+        ? data.languageRequirements
+        : {},
     eligibilityDescription: data.eligibilityDescription || data.eligibility || null,
-    requiredDocuments: Array.isArray(data.requiredDocuments) && data.requiredDocuments.length > 0
-      ? data.requiredDocuments
-      : ['Academic Transcripts', 'Curriculum Vitae', 'Statement of Purpose'],
+    requiredDocuments:
+      Array.isArray(data.requiredDocuments) && data.requiredDocuments.length > 0
+        ? data.requiredDocuments
+        : ['Academic Transcripts', 'Curriculum Vitae', 'Statement of Purpose'],
     applicationProcess:
       data.applicationProcess || 'Submit online application via official portal with certified credentials.',
     deadline,
@@ -332,7 +336,9 @@ export const WORKFLOWS: WorkflowDefinition[] = [
 
       for (const s of pending) {
         try {
-          const report = await VerificationService.verifyScholarship(s.id, { verifiedBy: 'AUTOMATION_VERIFICATION_AGENT' });
+          const report = await VerificationService.verifyScholarship(s.id, {
+            verifiedBy: 'AUTOMATION_VERIFICATION_AGENT',
+          });
           if (report.status === 'VERIFIED') metrics.verified++;
           else if (report.status === 'PARTIALLY_VERIFIED') metrics.partiallyVerified++;
           else if (report.status === 'NEEDS_REVIEW') metrics.needsReview++;
@@ -520,7 +526,8 @@ export const WORKFLOWS: WorkflowDefinition[] = [
   {
     key: 'application-reminder',
     name: 'Application Progress Reminders',
-    description: 'Nudges students with outstanding checklist items on active applications, at most once every 48 hours.',
+    description:
+      'Nudges students with outstanding checklist items on active applications, at most once every 48 hours.',
     intervalMinutes: 24 * 60,
     maxAttempts: 2,
     retryDelayMs: 2_000,
@@ -631,7 +638,10 @@ export const WORKFLOWS: WorkflowDefinition[] = [
       });
 
       if (pending.length === 0) {
-        return { pendingCount: 0, dispatched: 0, items: [] };
+        // `claimed` on both exit paths. This branch used to report `dispatched` while the
+        // main path reported `claimed`, so no single metric name described a run — a caller
+        // reading `dispatched` saw 0 on the empty path and undefined on every other one.
+        return { pendingCount: 0, claimed: 0, delivered: 0, failed: 0, released: 0, items: [] };
       }
 
       const ids = pending.map((n) => n.id);
@@ -913,21 +923,35 @@ export const WORKFLOWS: WorkflowDefinition[] = [
         });
       }
 
+      /**
+       * Spent and expired password reset rows have no further use, and each one is a
+       * standing reference to an account. Reaped here rather than in its own workflow
+       * because it is bounded, cheap and needs no coordination.
+       */
+      const purgedResetTokens = await AuthService.purgeExpiredResetTokens();
+      if (purgedResetTokens > 0) {
+        ctx.log('Purged spent password reset tokens', { count: purgedResetTokens });
+      }
+
       return {
         windowHours: 24,
         totalRuns: recent.length,
         failedRuns: failures.length,
         reapedAbandonedRuns: stuck.length,
+        purgedResetTokens,
         byWorkflow,
       };
     },
   },
 ];
 
-export const WORKFLOW_MAP: Record<string, WorkflowDefinition> = WORKFLOWS.reduce((acc, w) => {
-  acc[w.key] = w;
-  return acc;
-}, {} as Record<string, WorkflowDefinition>);
+export const WORKFLOW_MAP: Record<string, WorkflowDefinition> = WORKFLOWS.reduce(
+  (acc, w) => {
+    acc[w.key] = w;
+    return acc;
+  },
+  {} as Record<string, WorkflowDefinition>
+);
 
 export function getWorkflow(key: string): WorkflowDefinition | undefined {
   return WORKFLOW_MAP[key];

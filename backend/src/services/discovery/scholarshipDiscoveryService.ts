@@ -78,9 +78,19 @@ const MAX_SNIPPET_CHARS = 2500;
 
 /** Domains that are aggregators rather than authoritative sources. */
 const LOW_TRUST_HOSTS = [
-  'scholarshipregion', 'scholarshiptab', 'opportunitydesk', 'scholarshipdb',
-  'youtube.com', 'facebook.com', 'twitter.com', 'x.com', 'reddit.com',
-  'medium.com', 'blogspot', 'wordpress.com', 'pinterest',
+  'scholarshipregion',
+  'scholarshiptab',
+  'opportunitydesk',
+  'scholarshipdb',
+  'youtube.com',
+  'facebook.com',
+  'twitter.com',
+  'x.com',
+  'reddit.com',
+  'medium.com',
+  'blogspot',
+  'wordpress.com',
+  'pinterest',
 ];
 
 function hostOf(url: string): string {
@@ -116,10 +126,15 @@ function trustScore(url: string): number {
 function buildQueries(intent: ParsedSearchIntent, rawQuery: string): string[] {
   const parts: string[] = [];
   const degree =
-    intent.degreeLevel === 'MASTERS' ? "master's" :
-    intent.degreeLevel === 'PHD' ? 'PhD' :
-    intent.degreeLevel === 'BACHELORS' ? "bachelor's" :
-    intent.degreeLevel === 'POSTDOC' ? 'postdoctoral' : '';
+    intent.degreeLevel === 'MASTERS'
+      ? "master's"
+      : intent.degreeLevel === 'PHD'
+        ? 'PhD'
+        : intent.degreeLevel === 'BACHELORS'
+          ? "bachelor's"
+          : intent.degreeLevel === 'POSTDOC'
+            ? 'postdoctoral'
+            : '';
   const funding = intent.fundingType === 'FULL_FUNDING' ? 'fully funded' : '';
   const where = intent.hostCountry || intent.city || '';
   const year = new Date().getFullYear();
@@ -148,7 +163,11 @@ function buildQueries(intent: ParsedSearchIntent, rawQuery: string): string[] {
     .slice(0, 6)
     .join(' ');
 
-  const core = [funding, degree, field, 'scholarship', where && `in ${where}`].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  const core = [funding, degree, field, 'scholarship', where && `in ${where}`]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   parts.push(`${core} ${year} ${year + 1} international students application deadline`);
   parts.push(`${core} official site apply eligibility ${year + 1} intake`);
@@ -174,11 +193,7 @@ function buildQueries(intent: ParsedSearchIntent, rawQuery: string): string[] {
   // throttle bursts (HTTP 202), so a 5-query fan-out per chat turn made throttling the
   // normal case rather than the exception. Three angles still cover the search space.
   return Array.from(
-    new Set(
-      parts
-        .map((p) => p.replace(/\s+/g, ' ').trim())
-        .filter((p) => p.replace(/\s+/g, '').length > 12)
-    )
+    new Set(parts.map((p) => p.replace(/\s+/g, ' ').trim()).filter((p) => p.replace(/\s+/g, '').length > 12))
   ).slice(0, Number(process.env.DISCOVERY_MAX_QUERIES) || 3);
 }
 
@@ -222,7 +237,10 @@ async function extractScholarships(hits: SearchHit[], intent: ParsedSearchIntent
 
   const corpus = hits
     .slice(0, MAX_HITS_TO_EXTRACT)
-    .map((h, i) => `[SOURCE ${i + 1}]\nURL: ${h.url}\nTITLE: ${h.title}\nCONTENT: ${(h.snippet || '').slice(0, MAX_SNIPPET_CHARS)}`)
+    .map(
+      (h, i) =>
+        `[SOURCE ${i + 1}]\nURL: ${h.url}\nTITLE: ${h.title}\nCONTENT: ${(h.snippet || '').slice(0, MAX_SNIPPET_CHARS)}`
+    )
     .join('\n\n');
 
   const allowedUrls = hits.map((h) => h.url).filter(Boolean);
@@ -284,7 +302,8 @@ function validateExtracted(raw: any, allowedUrls: Set<string>): { ok: boolean; r
 
   if (title.length < 6) return { ok: false, reason: 'missing or too-short title' };
   if (!/^https?:\/\//i.test(officialUrl)) return { ok: false, reason: 'missing or malformed officialUrl' };
-  if (!allowedUrls.has(officialUrl)) return { ok: false, reason: 'officialUrl was not among the search results (possible fabrication)' };
+  if (!allowedUrls.has(officialUrl))
+    return { ok: false, reason: 'officialUrl was not among the search results (possible fabrication)' };
 
   const degreeLevels = (Array.isArray(raw.degreeLevels) ? raw.degreeLevels : [])
     .map((d: any) => String(d).trim().toUpperCase())
@@ -307,9 +326,13 @@ function validateExtracted(raw: any, allowedUrls: Set<string>): { ok: boolean; r
     ok: true,
     value: {
       title: title.slice(0, 300),
-      provider: String(raw.provider || 'Unspecified provider').trim().slice(0, 200),
+      provider: String(raw.provider || 'Unspecified provider')
+        .trim()
+        .slice(0, 200),
       university: raw.university ? String(raw.university).trim().slice(0, 200) : null,
-      hostCountry: String(raw.hostCountry || 'International').trim().slice(0, 100),
+      hostCountry: String(raw.hostCountry || 'International')
+        .trim()
+        .slice(0, 100),
       degreeLevels: degreeLevels.length > 0 ? degreeLevels : ['MASTERS'],
       fieldsOfStudy: (Array.isArray(raw.fieldsOfStudy) ? raw.fieldsOfStudy : [])
         .map((f: any) => String(f).trim())
@@ -325,7 +348,9 @@ function validateExtracted(raw: any, allowedUrls: Set<string>): { ok: boolean; r
       deadline,
       officialUrl,
       sourceUrl: String(raw.sourceUrl || officialUrl).trim(),
-      unknownFields: (Array.isArray(raw.unknownFields) ? raw.unknownFields : []).map((f: any) => String(f)).slice(0, 20),
+      unknownFields: (Array.isArray(raw.unknownFields) ? raw.unknownFields : [])
+        .map((f: any) => String(f))
+        .slice(0, 20),
     },
   };
 }
@@ -374,7 +399,7 @@ export class ScholarshipDiscoveryService {
 
     const search = await externalSearch(queries, {
       limitPerQuery: 8,
-      recencyDays: wantsRecent ? (options.recencyDays || 60) : undefined,
+      recencyDays: wantsRecent ? options.recencyDays || 60 : undefined,
     });
 
     result.queriesIssued = search.queriesIssued;
@@ -562,15 +587,18 @@ export class ScholarshipDiscoveryService {
       try {
         const profile = await prisma.studentProfile.findUnique({ where: { userId } });
         if (profile) {
-          const evaluation = MatchingService.evaluateCompatibility(profile, persisted || {
-            ...record,
-            degreeLevels: safeJsonStringify(record.degreeLevels),
-            fieldsOfStudy: safeJsonStringify(record.fieldsOfStudy),
-            eligibleNationalities: '[]',
-            languageRequirements: safeJsonStringify(record.languageRequirements),
-            requiredDocuments: '[]',
-            maxGpaScale: 4.0,
-          });
+          const evaluation = MatchingService.evaluateCompatibility(
+            profile,
+            persisted || {
+              ...record,
+              degreeLevels: safeJsonStringify(record.degreeLevels),
+              fieldsOfStudy: safeJsonStringify(record.fieldsOfStudy),
+              eligibleNationalities: '[]',
+              languageRequirements: safeJsonStringify(record.languageRequirements),
+              requiredDocuments: '[]',
+              maxGpaScale: 4.0,
+            }
+          );
           matchScore = evaluation.matchScore;
           eligibilityStatus = evaluation.eligibilityStatus;
         }

@@ -62,9 +62,7 @@ export function createRateLimiter(options: RateLimitOptions = {}) {
   const store = storeFor(options.bucket || 'default');
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const identifier = options.keyGenerator
-      ? options.keyGenerator(req)
-      : (req as any).user?.id || clientIp(req);
+    const identifier = options.keyGenerator ? options.keyGenerator(req) : (req as any).user?.id || clientIp(req);
 
     const now = Date.now();
     const record = store.get(identifier);

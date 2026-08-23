@@ -101,9 +101,7 @@ export const documentPaths = {
     delete: {
       tags: ['CV'],
       summary: 'Delete a CV analysis',
-      parameters: [
-        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-      ],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
         200: {
           description: 'Deleted.',
@@ -144,7 +142,7 @@ export const documentPaths = {
     get: {
       tags: ['SOP'],
       summary: 'Guided SOP questions',
-      description: 'Returns the question set that seeds an outline, tailored to the caller\'s profile.',
+      description: "Returns the question set that seeds an outline, tailored to the caller's profile.",
       parameters: [
         { name: 'targetScholarshipTitle', in: 'query', schema: { type: 'string' } },
         { name: 'fieldOfStudy', in: 'query', schema: { type: 'string' } },
@@ -215,7 +213,8 @@ export const documentPaths = {
     post: {
       tags: ['SOP'],
       summary: 'Refine one SOP section',
-      description: 'Rewrites a single section for clarity and academic tone without inventing facts. Rate limited as an AI-heavy route.',
+      description:
+        'Rewrites a single section for clarity and academic tone without inventing facts. Rate limited as an AI-heavy route.',
       requestBody: {
         required: true,
         content: { 'application/json': { schema: { $ref: '#/components/schemas/SOPRefineRequest' } } },
@@ -242,7 +241,7 @@ export const documentPaths = {
       summary: 'List SOP sessions',
       responses: {
         200: {
-          description: 'The caller\'s saved drafts.',
+          description: "The caller's saved drafts.",
           content: {
             'application/json': {
               schema: { type: 'array', items: { $ref: '#/components/schemas/SOPSession' } },
@@ -281,9 +280,7 @@ export const documentPaths = {
     get: {
       tags: ['SOP'],
       summary: 'Get one SOP session',
-      parameters: [
-        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-      ],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
         200: {
           description: 'The session.',
@@ -298,9 +295,7 @@ export const documentPaths = {
     delete: {
       tags: ['SOP'],
       summary: 'Delete an SOP session',
-      parameters: [
-        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-      ],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
       responses: {
         200: {
           description: 'Deleted.',

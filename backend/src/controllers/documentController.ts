@@ -5,9 +5,12 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import pdfParse from 'pdf-parse';
 import path from 'path';
 
-// Optional mammoth import for docx
+// Optional mammoth import for docx.
+// require() rather than a static import so a missing or broken install degrades to the
+// plain-text fallback instead of crashing the whole process at module load.
 let mammoth: any = null;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   mammoth = require('mammoth');
 } catch (err) {
   // Mammoth not available, fallback will be used
@@ -165,11 +168,7 @@ export class DocumentController {
     try {
       const userId = req.user!.id;
       const { targetScholarshipTitle, userInputs } = req.body;
-      const result = await SOPAssistantService.generateStructuredOutline(
-        userId,
-        targetScholarshipTitle,
-        userInputs
-      );
+      const result = await SOPAssistantService.generateStructuredOutline(userId, targetScholarshipTitle, userInputs);
       res.status(200).json(result);
     } catch (err) {
       next(err);

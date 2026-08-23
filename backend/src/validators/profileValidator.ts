@@ -40,10 +40,7 @@ const DEGREE_LEVELS = ['HIGH_SCHOOL', 'BACHELORS', 'MASTERS', 'PHD', 'POSTDOC', 
 const languageTestsField = z
   .record(z.union([z.number(), z.string()]))
   .refine((obj) => Object.keys(obj).length <= 12, 'At most 12 language tests can be recorded')
-  .refine(
-    (obj) => Object.keys(obj).every((k) => k.length <= 32),
-    'Language test names must be 32 characters or fewer'
-  );
+  .refine((obj) => Object.keys(obj).every((k) => k.length <= 32), 'Language test names must be 32 characters or fewer');
 
 export const updateProfileSchema = z.object({
   body: z
@@ -66,12 +63,16 @@ export const updateProfileSchema = z.object({
       scholarshipPreference: shortText('Scholarship preference').optional(),
       skills: z.array(shortText('Skill', 64)).max(100, 'At most 100 skills').optional(),
       workExperienceYears: numeric('Work experience years', 0, 70).optional(),
-      researchExperience: z.string().trim().max(4000, 'Research experience must be 4000 characters or fewer').optional(),
+      researchExperience: z
+        .string()
+        .trim()
+        .max(4000, 'Research experience must be 4000 characters or fewer')
+        .optional(),
     })
     .strip()
     // GPA above its own scale is contradictory and would poison match scoring.
-    .refine(
-      (data) => data.gpa === undefined || data.maxGpa === undefined || data.gpa <= data.maxGpa,
-      { message: 'GPA cannot exceed the maximum GPA scale', path: ['gpa'] }
-    ),
+    .refine((data) => data.gpa === undefined || data.maxGpa === undefined || data.gpa <= data.maxGpa, {
+      message: 'GPA cannot exceed the maximum GPA scale',
+      path: ['gpa'],
+    }),
 });

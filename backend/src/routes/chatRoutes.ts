@@ -17,8 +17,16 @@ router.use(authenticateToken);
 router.get('/conversations', ChatController.listConversations);
 router.post('/conversations', validateRequest(createConversationSchema), ChatController.createConversation);
 router.get('/conversations/:conversationId', validateRequest(conversationIdSchema), ChatController.getMessages);
-router.delete('/conversations/:conversationId', validateRequest(conversationIdSchema), ChatController.deleteConversation);
-router.patch('/conversations/:conversationId', validateRequest(renameConversationSchema), ChatController.renameConversation);
+router.delete(
+  '/conversations/:conversationId',
+  validateRequest(conversationIdSchema),
+  ChatController.deleteConversation
+);
+router.patch(
+  '/conversations/:conversationId',
+  validateRequest(renameConversationSchema),
+  ChatController.renameConversation
+);
 
 // Rate limited: each message can fan out into several model round-trips.
 router.post(
