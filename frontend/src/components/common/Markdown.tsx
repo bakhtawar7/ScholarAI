@@ -40,7 +40,10 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
 
     if (token.startsWith('`')) {
       nodes.push(
-        <code key={key} className="px-1.5 py-0.5 rounded bg-dark-bg border border-dark-border text-cyan-300 text-[0.95em] font-mono">
+        <code
+          key={key}
+          className="px-1.5 py-0.5 rounded bg-dark-bg border border-dark-border text-cyan-300 text-[0.95em] font-mono"
+        >
           {token.slice(1, -1)}
         </code>
       );
@@ -184,7 +187,7 @@ export const Markdown: React.FC<{ content: string; className?: string }> = ({ co
         const key = `b${idx}`;
         switch (block.type) {
           case 'heading': {
-            const Tag = (`h${Math.min(6, block.level + 2)}` as keyof JSX.IntrinsicElements);
+            const Tag = `h${Math.min(6, block.level + 2)}` as keyof JSX.IntrinsicElements;
             return (
               <Tag key={key} className={HEADING_CLASS[block.level] || HEADING_CLASS[3]}>
                 {renderInline(block.text, key)}

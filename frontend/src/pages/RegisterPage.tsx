@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../services/api';
-import { Sparkles, ArrowRight, Lock, Mail, User, Loader2, AlertCircle, Check } from 'lucide-react';
+import { ArrowRight, Lock, Mail, User, Loader2, AlertCircle, Check } from 'lucide-react';
+import { AuthHeader } from '../components/common/AuthHeader';
 
 /** Mirrors the backend policy in authValidator.ts so users see failures before submitting. */
 const PASSWORD_RULES = [
@@ -67,8 +68,8 @@ export const RegisterPage: React.FC = () => {
           err.status === 409
             ? 'An account with this email already exists. Try signing in instead.'
             : err.isRateLimited
-            ? 'Too many attempts. Please wait a few minutes and try again.'
-            : err.message
+              ? 'Too many attempts. Please wait a few minutes and try again.'
+              : err.message
         );
       } else {
         setError('Could not create your account. Please try again.');
@@ -85,14 +86,8 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-md glass-panel border border-brand-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-brand-500/10">
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-cyan-400 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-brand-500/30">
-            <Sparkles className="w-6 h-6 text-white" aria-hidden="true" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Create account</h1>
-          <p className="text-xs text-slate-400 mt-1">Start matching scholarships tailored for you</p>
-        </div>
+      <div className="w-full max-w-md bg-dark-card border border-dark-border rounded-2xl p-6 sm:p-8">
+        <AuthHeader title="Create account" subtitle={'Set up your profile to start matching scholarships'} />
 
         {error && (
           <div
@@ -190,7 +185,7 @@ export const RegisterPage: React.FC = () => {
                 return (
                   <li
                     key={rule.label}
-                    className={`flex items-center gap-1.5 text-[11px] ${met ? 'text-emerald-400' : 'text-slate-500'}`}
+                    className={`flex items-center gap-1.5 text-2xs ${met ? 'text-emerald-400' : 'text-slate-500'}`}
                   >
                     {met ? (
                       <Check className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -204,15 +199,13 @@ export const RegisterPage: React.FC = () => {
               })}
             </ul>
 
-            {fieldErrors.password && (
-              <p className="text-rose-400 mt-1">{fieldErrors.password}</p>
-            )}
+            {fieldErrors.password && <p className="text-rose-400 mt-1">{fieldErrors.password}</p>}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:outline-none"
+            className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:outline-none"
           >
             {loading ? (
               <>

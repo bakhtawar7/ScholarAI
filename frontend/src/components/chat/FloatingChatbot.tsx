@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api, ApiError } from '../../services/api';
 import { ChatMessage } from '../../types';
 import { Markdown } from '../common/Markdown';
-import { Sparkles, Send, X, Bot, User, Wrench, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Bot, CheckCircle2, Loader2, Send, User, Wrench, X } from 'lucide-react';
 
 /**
  * Tool call metadata arrives as a JSON *string* from Prisma (the column is TEXT).
@@ -26,17 +26,18 @@ function parseToolCalls(toolCalls: unknown): Array<{ toolName?: string }> {
 const WELCOME: ChatMessage = {
   id: 'welcome',
   sender: 'ASSISTANT',
-  content:
-    'Hello! I am your **AI Scholarship Copilot**. Ask me to search scholarships, check your eligibility, manage your application tracker, or review deadlines.',
+  content: `Ask me to search for scholarships, check your eligibility against one, add to your application tracker, or review upcoming deadlines.`,
   createdAt: new Date().toISOString(),
 };
 
+// Emoji removed: they were decoration, they render inconsistently across platforms, and
+// screen readers announce them by their Unicode name mid-sentence.
 const SUGGESTIONS = [
-  { label: '✨ Fully funded for me', prompt: 'Find fully funded scholarships for me' },
-  { label: '🎯 Matches for profile', prompt: 'Which scholarships match my profile?' },
-  { label: '📋 Check eligibility', prompt: 'Check my eligibility' },
-  { label: '⏰ Upcoming deadlines', prompt: 'Show my upcoming deadlines' },
-  { label: '⚖️ Compare saved', prompt: 'Compare my saved scholarships' },
+  { label: 'Fully funded for me', prompt: 'Find fully funded scholarships for me' },
+  { label: 'Matches for my profile', prompt: 'Which scholarships match my profile?' },
+  { label: 'Check my eligibility', prompt: 'Check my eligibility' },
+  { label: 'Upcoming deadlines', prompt: 'Show my upcoming deadlines' },
+  { label: 'Compare saved', prompt: 'Compare my saved scholarships' },
 ];
 
 const MAX_MESSAGE_LENGTH = 4000;
@@ -121,21 +122,21 @@ export const FloatingChatbot: React.FC<{ isOpen: boolean; onClose: () => void }>
       ref={panelRef}
       role="dialog"
       aria-modal="false"
-      aria-label="AI Scholarship Copilot chat"
-      className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 sm:w-[420px] h-[min(580px,calc(100vh-2rem))] glass-panel border border-brand-500/40 rounded-3xl shadow-2xl shadow-brand-500/20 flex flex-col z-50 overflow-hidden animate-slide-up"
+      aria-label="ScholarAI assistant chat"
+      className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 sm:w-[420px] h-[min(580px,calc(100vh-2rem))] glass-panel border border-brand-500/40 rounded-3xl flex flex-col z-50 overflow-hidden animate-slide-up"
     >
       {/* Header */}
-      <div className="p-4 bg-gradient-to-r from-brand-900/90 via-dark-card to-dark-card border-b border-dark-border flex items-center justify-between shrink-0">
+      <div className="p-4 bg-dark-card border-b border-dark-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-400 flex items-center justify-center shadow-md shrink-0">
-            <Sparkles className="w-5 h-5 text-white" aria-hidden="true" />
+          <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center shadow-md shrink-0">
+            <Bot className="w-5 h-5 text-white" aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <h2 className="font-bold text-sm text-white flex items-center gap-2 truncate">
-              AI Scholarship Copilot
+              ScholarAI assistant
               <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" aria-hidden="true" />
             </h2>
-            <p className="text-[10px] text-cyan-400">Agent &amp; tool calling active</p>
+            <p className="text-2xs text-cyan-400">Agent &amp; tool calling active</p>
           </div>
         </div>
         <button
@@ -149,7 +150,7 @@ export const FloatingChatbot: React.FC<{ isOpen: boolean; onClose: () => void }>
       </div>
 
       {/* Suggested actions */}
-      <div className="p-2.5 bg-dark-bg/80 border-b border-dark-border/40 flex items-center gap-1.5 overflow-x-auto text-[11px] shrink-0">
+      <div className="p-2.5 bg-dark-bg/80 border-b border-dark-border/40 flex items-center gap-1.5 overflow-x-auto text-2xs shrink-0">
         {SUGGESTIONS.map((s) => (
           <button
             key={s.prompt}
@@ -181,7 +182,7 @@ export const FloatingChatbot: React.FC<{ isOpen: boolean; onClose: () => void }>
               </div>
               <div className="max-w-[82%] space-y-1.5 min-w-0">
                 {!isUser && toolCalls.length > 0 && (
-                  <div className="p-2 rounded-xl bg-dark-bg/90 border border-brand-500/20 text-[10px] text-brand-300 space-y-1 font-mono">
+                  <div className="p-2 rounded-xl bg-dark-bg/90 border border-brand-500/20 text-2xs text-brand-300 space-y-1 font-mono">
                     {toolCalls.map((tc, idx) => (
                       <div key={idx} className="flex items-center gap-1.5">
                         <Wrench className="w-3 h-3 text-cyan-400 shrink-0" aria-hidden="true" />
@@ -223,7 +224,10 @@ export const FloatingChatbot: React.FC<{ isOpen: boolean; onClose: () => void }>
       </div>
 
       {error && (
-        <div role="alert" className="mx-3 mb-2 flex items-start gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px] shrink-0">
+        <div
+          role="alert"
+          className="mx-3 mb-2 flex items-start gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-2xs shrink-0"
+        >
           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
           <span className="flex-1">{error}</span>
           <button type="button" onClick={() => setError(null)} aria-label="Dismiss error" className="font-bold px-1">
@@ -241,7 +245,7 @@ export const FloatingChatbot: React.FC<{ isOpen: boolean; onClose: () => void }>
         className="p-3 border-t border-dark-border bg-dark-card/90 flex items-center gap-2 shrink-0"
       >
         <label htmlFor="chatbot-input" className="sr-only">
-          Message the AI Scholarship Copilot
+          Message the assistant
         </label>
         <input
           id="chatbot-input"

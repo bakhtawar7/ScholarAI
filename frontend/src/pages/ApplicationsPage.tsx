@@ -4,25 +4,19 @@ import { api, ApiError } from '../services/api';
 import { LoadingState, ErrorState, InlineError } from '../components/common/States';
 import { Application, ApplicationStatus } from '../types';
 import {
-  KanbanSquare,
-  CheckSquare,
-  Square,
-  Plus,
-  Clock,
-  Sparkles,
-  Trash2,
   Calendar,
-  FileText,
-  ExternalLink,
+  Check,
+  CheckSquare,
   ChevronDown,
   ChevronUp,
-  CheckCircle2,
-  AlertCircle,
-  Search,
+  FileText,
+  KanbanSquare,
   ListTodo,
-  Check,
+  Plus,
   Save,
-  BookOpen,
+  Search,
+  Square,
+  Trash2,
 } from 'lucide-react';
 
 const statuses: { key: ApplicationStatus; label: string; color: string; badge: string }[] = [
@@ -125,9 +119,7 @@ export const ApplicationsPage: React.FC = () => {
           if (a.id === appId) {
             return {
               ...a,
-              checklists: a.checklists.map((c) =>
-                c.id === checklistId ? { ...c, isCompleted: !c.isCompleted } : c
-              ),
+              checklists: a.checklists.map((c) => (c.id === checklistId ? { ...c, isCompleted: !c.isCompleted } : c)),
             };
           }
           return a;
@@ -158,11 +150,7 @@ export const ApplicationsPage: React.FC = () => {
     try {
       await api.deleteChecklistItem(checklistId);
       setApplications((prev) =>
-        prev.map((a) =>
-          a.id === appId
-            ? { ...a, checklists: a.checklists.filter((c) => c.id !== checklistId) }
-            : a
-        )
+        prev.map((a) => (a.id === appId ? { ...a, checklists: a.checklists.filter((c) => c.id !== checklistId) } : a))
       );
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'That action could not be completed.');
@@ -182,9 +170,7 @@ export const ApplicationsPage: React.FC = () => {
     try {
       const notes = editingNotes[appId] || '';
       await api.updateApplication(appId, { notes });
-      setApplications((prev) =>
-        prev.map((a) => (a.id === appId ? { ...a, notes } : a))
-      );
+      setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, notes } : a)));
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'That action could not be completed.');
     }
@@ -194,9 +180,7 @@ export const ApplicationsPage: React.FC = () => {
     try {
       const submissionDate = dateStr ? new Date(dateStr) : null;
       await api.updateApplication(appId, { submissionDate });
-      setApplications((prev) =>
-        prev.map((a) => (a.id === appId ? { ...a, submissionDate: dateStr } : a))
-      );
+      setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, submissionDate: dateStr } : a)));
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'That action could not be completed.');
     }
@@ -228,8 +212,7 @@ export const ApplicationsPage: React.FC = () => {
       app.scholarship.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.scholarship.hostCountry.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus =
-      selectedStatusTab === 'ALL' || app.status === selectedStatusTab;
+    const matchesStatus = selectedStatusTab === 'ALL' || app.status === selectedStatusTab;
 
     return matchesSearch && matchesStatus;
   });
@@ -238,9 +221,7 @@ export const ApplicationsPage: React.FC = () => {
   const inPreparation = applications.filter(
     (a) => a.status === 'INTERESTED' || a.status === 'PREPARING' || a.status === 'READY_TO_APPLY'
   ).length;
-  const submitted = applications.filter(
-    (a) => a.status === 'APPLIED' || a.status === 'INTERVIEW'
-  ).length;
+  const submitted = applications.filter((a) => a.status === 'APPLIED' || a.status === 'INTERVIEW').length;
   const accepted = applications.filter((a) => a.status === 'ACCEPTED').length;
 
   if (loading) {
@@ -326,7 +307,7 @@ export const ApplicationsPage: React.FC = () => {
                 }`}
               >
                 <span>{s.label}</span>
-                <span className="w-4 h-4 rounded-full bg-dark-bg/60 text-[10px] flex items-center justify-center">
+                <span className="w-4 h-4 rounded-full bg-dark-bg/60 text-2xs flex items-center justify-center">
                   {count}
                 </span>
               </button>
@@ -345,9 +326,11 @@ export const ApplicationsPage: React.FC = () => {
             return (
               <div key={col.key} className="space-y-3 min-w-[280px] xl:min-w-[240px]">
                 {/* Column Header */}
-                <div className={`p-3 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-sm ${col.color}`}>
+                <div
+                  className={`p-3 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-sm ${col.color}`}
+                >
                   <span>{col.label}</span>
-                  <span className="w-5 h-5 rounded-full bg-dark-bg/80 flex items-center justify-center text-[10px] font-extrabold text-white">
+                  <span className="w-5 h-5 rounded-full bg-dark-bg/80 flex items-center justify-center text-2xs font-extrabold text-white">
                     {colApps.length}
                   </span>
                 </div>
@@ -355,7 +338,7 @@ export const ApplicationsPage: React.FC = () => {
                 {/* Cards in Column */}
                 <div className="space-y-3">
                   {colApps.length === 0 ? (
-                    <div className="p-4 rounded-2xl border border-dashed border-dark-border text-center text-slate-500 text-[11px]">
+                    <div className="p-4 rounded-2xl border border-dashed border-dark-border text-center text-slate-500 text-2xs">
                       No applications in this stage
                     </div>
                   ) : (
@@ -375,7 +358,7 @@ export const ApplicationsPage: React.FC = () => {
                         >
                           {/* Top: Country & Delete Action */}
                           <div className="flex items-start justify-between gap-1">
-                            <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
+                            <span className="text-2xs text-cyan-400 font-bold uppercase tracking-wider">
                               {app.scholarship.hostCountry}
                             </span>
                             <button
@@ -397,7 +380,7 @@ export const ApplicationsPage: React.FC = () => {
 
                           {/* Deadline & Urgency Badge */}
                           {app.scholarship.deadline && (
-                            <div className="flex items-center justify-between text-[10px] pt-1">
+                            <div className="flex items-center justify-between text-2xs pt-1">
                               <span className="text-slate-400 flex items-center gap-1">
                                 <Calendar className="w-3 h-3 text-indigo-400" />
                                 {new Date(app.scholarship.deadline).toLocaleDateString([], {
@@ -411,8 +394,8 @@ export const ApplicationsPage: React.FC = () => {
                                   isExpired
                                     ? 'bg-slate-800 text-slate-400 border-slate-700'
                                     : isCritical
-                                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                                 }`}
                               >
                                 {isExpired ? 'Closed' : `${daysRemaining}d left`}
@@ -422,11 +405,11 @@ export const ApplicationsPage: React.FC = () => {
 
                           {/* Status Dropdown Selector */}
                           <div>
-                            <label className="text-[10px] font-semibold text-slate-400 block mb-1">Stage:</label>
+                            <label className="text-2xs font-semibold text-slate-400 block mb-1">Stage:</label>
                             <select
                               value={app.status}
                               onChange={(e) => handleStatusChange(app.id, e.target.value as ApplicationStatus)}
-                              className="w-full bg-dark-bg border border-dark-border rounded-xl px-2.5 py-1.5 text-[11px] text-slate-200 font-semibold focus:outline-none focus:border-brand-500 transition"
+                              className="w-full bg-dark-bg border border-dark-border rounded-xl px-2.5 py-1.5 text-2xs text-slate-200 font-semibold focus:outline-none focus:border-brand-500 transition"
                             >
                               {statuses.map((s) => (
                                 <option key={s.key} value={s.key}>
@@ -437,24 +420,27 @@ export const ApplicationsPage: React.FC = () => {
                           </div>
 
                           {/* Submission Date Picker */}
-                          <div className="p-2 rounded-xl bg-dark-bg/60 border border-dark-border/40 text-[10px] space-y-1">
+                          <div className="p-2 rounded-xl bg-dark-bg/60 border border-dark-border/40 text-2xs space-y-1">
                             <label className="text-slate-400 font-semibold block flex items-center justify-between">
                               <span>Submission Date:</span>
                               {app.submissionDate && (
-                                <span className="text-emerald-400 font-bold">✓ Recorded</span>
+                                <span className="text-emerald-400 font-semibold inline-flex items-center gap-1">
+                                  <Check className="w-3 h-3" aria-hidden="true" />
+                                  Recorded
+                                </span>
                               )}
                             </label>
                             <input
                               type="date"
                               value={app.submissionDate ? new Date(app.submissionDate).toISOString().split('T')[0] : ''}
                               onChange={(e) => handleSubmissionDateChange(app.id, e.target.value)}
-                              className="w-full bg-dark-card border border-dark-border rounded-lg px-2 py-1 text-[10px] text-white focus:outline-none focus:border-brand-500"
+                              className="w-full bg-dark-card border border-dark-border rounded-lg px-2 py-1 text-2xs text-white focus:outline-none focus:border-brand-500"
                             />
                           </div>
 
                           {/* Checklist Progress Bar */}
                           <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[10px] text-slate-400">
+                            <div className="flex items-center justify-between text-2xs text-slate-400">
                               <span>Checklist Progress</span>
                               <span className="font-bold text-emerald-400">
                                 {completedCount}/{totalCount} ({progressPct}%)
@@ -470,7 +456,7 @@ export const ApplicationsPage: React.FC = () => {
 
                           {/* Checklist Items List */}
                           <div className="pt-2 border-t border-dark-border/40 space-y-1.5">
-                            <div className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center justify-between text-2xs">
                               <span className="font-bold text-slate-300 flex items-center gap-1">
                                 <ListTodo className="w-3 h-3 text-cyan-400" />
                                 <span>Checklist:</span>
@@ -478,7 +464,7 @@ export const ApplicationsPage: React.FC = () => {
                               {totalCount === 0 && (
                                 <button
                                   onClick={() => handlePopulateStandardTemplate(app.id)}
-                                  className="text-brand-300 hover:text-white font-semibold text-[10px]"
+                                  className="text-brand-300 hover:text-white font-semibold text-2xs"
                                   title="Add CV, Transcript, SOP, Recommendations template"
                                 >
                                   + Standard Template
@@ -486,7 +472,7 @@ export const ApplicationsPage: React.FC = () => {
                               )}
                             </div>
 
-                            <div className="max-h-36 overflow-y-auto space-y-1 text-[11px] pr-1 scrollbar-thin">
+                            <div className="max-h-36 overflow-y-auto space-y-1 text-2xs pr-1 scrollbar-thin">
                               {app.checklists.map((item) => (
                                 <div
                                   key={item.id}
@@ -534,11 +520,11 @@ export const ApplicationsPage: React.FC = () => {
                                     handleAddChecklist(app.id);
                                   }
                                 }}
-                                className="flex-1 bg-dark-bg border border-dark-border rounded-lg px-2 py-1 text-[10px] text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+                                className="flex-1 bg-dark-bg border border-dark-border rounded-lg px-2 py-1 text-2xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
                               />
                               <button
                                 onClick={() => handleAddChecklist(app.id)}
-                                className="p-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-500 text-[10px] shrink-0"
+                                className="p-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-500 text-2xs shrink-0"
                                 title="Add Task"
                               >
                                 <Plus className="w-3 h-3" />
@@ -549,36 +535,28 @@ export const ApplicationsPage: React.FC = () => {
                           {/* Expandable Notes Section */}
                           <div className="pt-2 border-t border-dark-border/40">
                             <button
-                              onClick={() =>
-                                setOpenNotesMap((prev) => ({ ...prev, [app.id]: !prev[app.id] }))
-                              }
-                              className="w-full flex items-center justify-between text-[10px] font-semibold text-slate-400 hover:text-white transition"
+                              onClick={() => setOpenNotesMap((prev) => ({ ...prev, [app.id]: !prev[app.id] }))}
+                              className="w-full flex items-center justify-between text-2xs font-semibold text-slate-400 hover:text-white transition"
                             >
                               <span className="flex items-center gap-1">
                                 <FileText className="w-3 h-3 text-brand-400" />
                                 <span>Application Notes</span>
                               </span>
-                              {isNotesOpen ? (
-                                <ChevronUp className="w-3 h-3" />
-                              ) : (
-                                <ChevronDown className="w-3 h-3" />
-                              )}
+                              {isNotesOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </button>
 
                             {isNotesOpen && (
                               <div className="mt-2 space-y-1.5">
                                 <textarea
                                   value={editingNotes[app.id] ?? ''}
-                                  onChange={(e) =>
-                                    setEditingNotes({ ...editingNotes, [app.id]: e.target.value })
-                                  }
+                                  onChange={(e) => setEditingNotes({ ...editingNotes, [app.id]: e.target.value })}
                                   placeholder="Record contacts, professor outreach, interview remarks, or draft notes..."
                                   rows={2}
-                                  className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-[10px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 resize-none"
+                                  className="w-full bg-dark-bg border border-dark-border rounded-lg p-2 text-2xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 resize-none"
                                 />
                                 <button
                                   onClick={() => handleSaveNotes(app.id)}
-                                  className="px-2 py-1 rounded-md bg-dark-card border border-brand-500/40 text-brand-300 hover:bg-brand-600 hover:text-white text-[10px] font-semibold flex items-center gap-1 transition"
+                                  className="px-2 py-1 rounded-md bg-dark-card border border-brand-500/40 text-brand-300 hover:bg-brand-600 hover:text-white text-2xs font-semibold flex items-center gap-1 transition"
                                 >
                                   <Save className="w-2.5 h-2.5" />
                                   <span>Save Notes</span>

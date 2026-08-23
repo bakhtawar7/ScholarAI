@@ -66,7 +66,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           </div>
 
           {import.meta.env.DEV && (
-            <pre className="text-[10px] text-left text-rose-300/80 bg-dark-bg/80 border border-dark-border rounded-xl p-3 overflow-auto max-h-40">
+            <pre className="text-2xs text-left text-rose-300/80 bg-dark-bg/80 border border-dark-border rounded-xl p-3 overflow-auto max-h-40">
               {error.message}
             </pre>
           )}

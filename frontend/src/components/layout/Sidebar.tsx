@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   GraduationCap,
-  Sparkles,
   Bot,
   KanbanSquare,
   Bookmark,
@@ -14,10 +13,11 @@ import {
   Workflow,
   X,
 } from 'lucide-react';
+import { APP_NAME, APP_TAGLINE_SHORT } from '../../config/brand';
 
 export const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/ai-assistant', label: 'AI Scholarship Copilot', icon: Bot },
+  { path: '/ai-assistant', label: 'Assistant', icon: Bot },
   { path: '/scholarships', label: 'Scholarship Explorer', icon: GraduationCap },
   { path: '/applications', label: 'My Applications', icon: KanbanSquare },
   { path: '/saved', label: 'Saved Scholarships', icon: Bookmark },
@@ -57,32 +57,33 @@ const NavList: React.FC<{ isAdmin: boolean; onNavigate?: () => void }> = ({ isAd
 );
 
 const Brand: React.FC = () => (
-  <div className="flex items-center gap-3 px-2 py-3 mb-6 border-b border-dark-border/60">
-    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-brand-500/20 shrink-0">
-      <Sparkles className="w-6 h-6 text-white" aria-hidden="true" />
+  <div className="flex items-center gap-2.5 px-2 py-3 mb-6 border-b border-dark-border">
+    {/* Flat monogram, matching the landing header. */}
+    <div className="w-9 h-9 rounded-lg bg-brand-600 flex items-center justify-center shrink-0">
+      <span className="text-base font-bold text-white">S</span>
     </div>
     <div className="min-w-0">
-      <p className="font-extrabold text-lg text-white tracking-wide truncate">ScholarCopilot</p>
-      <p className="text-xs text-brand-400 font-medium">AI Scholarship Assistant</p>
+      <p className="font-bold text-base text-white tracking-tight truncate">{APP_NAME}</p>
+      <p className="text-2xs text-slate-400 truncate">{APP_TAGLINE_SHORT}</p>
     </div>
   </div>
 );
 
 const EngineBadge: React.FC<{ aiEnabled: boolean }> = ({ aiEnabled }) => (
-  <div className="p-3.5 rounded-2xl bg-gradient-to-br from-brand-900/60 to-dark-card border border-brand-500/20 text-xs">
+  <div className="p-3 rounded-xl bg-dark-card border border-dark-border text-xs">
     <div className="flex items-center gap-2 mb-1.5 font-semibold text-white">
-      <Sparkles className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-      <span>Copilot engine</span>
+      <span
+        className={`w-1.5 h-1.5 rounded-full shrink-0 ${aiEnabled ? 'bg-emerald-400' : 'bg-slate-500'}`}
+        aria-hidden="true"
+      />
+      <span>{aiEnabled ? 'Live matching active' : 'Offline matching'}</span>
     </div>
-    <p className="text-slate-400 mb-2 leading-relaxed">
+    <p className="text-2xs text-slate-400 leading-relaxed">
       {/* Reflects the actual runtime state rather than asserting a stack that may not be configured. */}
       {aiEnabled
-        ? 'Tool orchestration and in-app verification workflows are active.'
+        ? 'Tool orchestration and verification workflows are running.'
         : 'Running on deterministic matching and verification engines.'}
     </p>
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-      Connected
-    </span>
   </div>
 );
 
@@ -127,11 +128,7 @@ export const MobileNav: React.FC<{ isOpen: boolean; onClose: () => void; isAdmin
 
   return (
     <div className="md:hidden fixed inset-0 z-40 flex">
-      <div
-        className="absolute inset-0 bg-black/70 animate-fade-in"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/70 animate-fade-in" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"

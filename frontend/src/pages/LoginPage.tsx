@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api, ApiError } from '../services/api';
-import { Sparkles, ArrowRight, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowRight, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
+import { AuthHeader } from '../components/common/AuthHeader';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -47,14 +48,8 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-md glass-panel border border-brand-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-brand-500/10">
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-cyan-400 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-brand-500/30">
-            <Sparkles className="w-6 h-6 text-white" aria-hidden="true" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Welcome back</h1>
-          <p className="text-xs text-slate-400 mt-1">Sign in to your AI Scholarship Copilot dashboard</p>
-        </div>
+      <div className="w-full max-w-md bg-dark-card border border-dark-border rounded-2xl p-6 sm:p-8">
+        <AuthHeader title="Welcome back" subtitle={'Sign in to continue'} />
 
         {error && (
           <div
@@ -99,9 +94,17 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="login-password" className="block text-slate-300 font-semibold mb-1">
-              Password
-            </label>
+            <div className="flex items-baseline justify-between mb-1">
+              <label htmlFor="login-password" className="block text-slate-300 font-semibold">
+                Password
+              </label>
+              <Link
+                to="/auth/forgot-password"
+                className="text-brand-300 hover:underline focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:outline-none rounded"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" aria-hidden="true" />
               <input
@@ -130,7 +133,7 @@ export const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:outline-none"
+            className="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:outline-none"
           >
             {loading ? (
               <>

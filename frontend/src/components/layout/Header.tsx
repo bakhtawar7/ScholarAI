@@ -2,13 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { NotificationItem } from '../../types';
-import { Bell, LogOut, Sparkles, Menu, CheckCheck } from 'lucide-react';
+import { Bell, Bot, CheckCheck, LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export const Header: React.FC<{ onToggleChat: () => void; onOpenNav: () => void }> = ({
-  onToggleChat,
-  onOpenNav,
-}) => {
+export const Header: React.FC<{ onToggleChat: () => void; onOpenNav: () => void }> = ({ onToggleChat, onOpenNav }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -104,9 +101,9 @@ export const Header: React.FC<{ onToggleChat: () => void; onOpenNav: () => void 
         <button
           type="button"
           onClick={onToggleChat}
-          className="flex items-center gap-2 px-3 md:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-xs font-semibold shadow-lg shadow-brand-500/25 focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:outline-none transition"
+          className="flex items-center gap-2 px-3 md:px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:outline-none transition"
         >
-          <Sparkles className="w-4 h-4 text-cyan-300" aria-hidden="true" />
+          <Bot className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Ask AI Copilot</span>
           <span className="sr-only sm:hidden">Ask AI Copilot</span>
         </button>
@@ -125,7 +122,7 @@ export const Header: React.FC<{ onToggleChat: () => void; onOpenNav: () => void 
             {unreadCount > 0 && (
               <span
                 aria-hidden="true"
-                className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center"
+                className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-2xs font-bold flex items-center justify-center"
               >
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
@@ -145,13 +142,13 @@ export const Header: React.FC<{ onToggleChat: () => void; onOpenNav: () => void 
                   <button
                     type="button"
                     onClick={handleMarkAllRead}
-                    className="inline-flex items-center gap-1 text-[10px] text-brand-300 hover:text-brand-200 font-semibold focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:outline-none rounded px-1"
+                    className="inline-flex items-center gap-1 text-2xs text-brand-300 hover:text-brand-200 font-semibold focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:outline-none rounded px-1"
                   >
                     <CheckCheck className="w-3 h-3" aria-hidden="true" />
                     Mark all read
                   </button>
                 ) : (
-                  <span className="text-[10px] text-slate-400">All read</span>
+                  <span className="text-2xs text-slate-400">All read</span>
                 )}
               </div>
 
@@ -179,8 +176,8 @@ export const Header: React.FC<{ onToggleChat: () => void; onOpenNav: () => void 
                       }`}
                     >
                       <span className="block font-semibold text-white mb-0.5">{n.title}</span>
-                      <span className="block text-slate-300 text-[11px] leading-tight mb-1">{n.message}</span>
-                      <span className="block text-[9px] text-brand-300">
+                      <span className="block text-slate-300 text-2xs leading-tight mb-1">{n.message}</span>
+                      <span className="block text-2xs text-brand-300">
                         {new Date(n.createdAt).toLocaleDateString()}
                         {!n.isRead && <span className="sr-only"> (unread)</span>}
                       </span>

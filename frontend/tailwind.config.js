@@ -34,6 +34,26 @@ export default {
           hover: '#1a2234',
         },
       },
+      /**
+       * Type scale.
+       *
+       * The interface had drifted very small: ~250 uses of `text-xs` and 90 of the
+       * arbitrary `text-[11px]`, against only ~70 uses of `text-sm`/`text-base`
+       * combined — so almost all body copy rendered at 11–12px. Dense small text reads
+       * as "data-heavy" but is genuinely hard to read and is the giveaway of a layout
+       * that was never looked at on a real screen.
+       *
+       * Rather than rewrite hundreds of call sites, the scale itself is redefined: the
+       * floor moves up and line-heights get room to breathe. `2xs` exists for genuine
+       * micro-labels (table captions, badge text) and replaces the arbitrary
+       * `text-[11px]`, so nothing escapes the scale.
+       */
+      fontSize: {
+        '2xs': ['0.75rem', { lineHeight: '1.05rem' }], // 12px — micro-labels only
+        xs: ['0.8125rem', { lineHeight: '1.2rem' }], // 13px — was 12px
+        sm: ['0.9375rem', { lineHeight: '1.45rem' }], // 15px — was 14px
+        base: ['1rem', { lineHeight: '1.6rem' }],
+      },
       keyframes: {
         'fade-in': {
           from: { opacity: '0' },

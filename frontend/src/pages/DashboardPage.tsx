@@ -1,23 +1,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../services/api';
-import { Scholarship, DeadlineItem, Application, ScholarshipMatch } from '../types';
+import { DeadlineItem, Application, ScholarshipMatch } from '../types';
 import { EligibilityExplanationModal } from '../components/scholarships/EligibilityExplanationModal';
 import { LoadingState, ErrorState, InlineError } from '../components/common/States';
 import {
-  Sparkles,
-  GraduationCap,
-  Clock,
-  KanbanSquare,
-  Bookmark,
-  ArrowRight,
-  CheckCircle2,
   AlertTriangle,
-  XCircle,
-  FileText,
+  ArrowRight,
   BookOpenCheck,
-  TrendingUp,
+  CheckCircle2,
+  Clock,
+  FileText,
+  GraduationCap,
+  Info,
+  KanbanSquare,
   RefreshCw,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -98,13 +97,13 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Welcome & Academic Profile Card */}
-      <div className="p-6 md:p-8 rounded-3xl bg-gradient-to-r from-brand-900/80 via-dark-card to-dark-card border border-brand-500/30 shadow-2xl relative overflow-hidden">
+      <div className="p-6 md:p-8 rounded-3xl bg-dark-card border border-brand-500/30 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 border border-brand-500/40 text-brand-300 text-xs font-semibold mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <Target className="w-3.5 h-3.5" aria-hidden="true" />
               <span>AI Matching Active</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white">
@@ -144,10 +143,8 @@ export const DashboardPage: React.FC = () => {
             <span className="text-xs text-slate-400 font-medium">Top Match Score</span>
             <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-extrabold text-white">
-            {topMatchScore !== null ? `${topMatchScore}%` : '—'}
-          </div>
-          <p className="text-[10px] text-emerald-400 mt-1">
+          <div className="text-2xl font-extrabold text-white">{topMatchScore !== null ? `${topMatchScore}%` : '—'}</div>
+          <p className="text-2xs text-emerald-400 mt-1">
             {topMatchScore !== null ? 'Direct academic compatibility' : 'Complete your profile for matches'}
           </p>
         </div>
@@ -158,7 +155,7 @@ export const DashboardPage: React.FC = () => {
             <KanbanSquare className="w-4 h-4 text-indigo-400" />
           </div>
           <div className="text-2xl font-extrabold text-white">{applications.length}</div>
-          <p className="text-[10px] text-indigo-400 mt-1">In active preparation</p>
+          <p className="text-2xs text-indigo-400 mt-1">In active preparation</p>
         </div>
 
         <div className="p-5 rounded-2xl glass-card border border-dark-border">
@@ -167,7 +164,7 @@ export const DashboardPage: React.FC = () => {
             <Clock className="w-4 h-4 text-rose-400" />
           </div>
           <div className="text-2xl font-extrabold text-white">{urgentCount}</div>
-          <p className="text-[10px] text-rose-400 mt-1">Within 30 days</p>
+          <p className="text-2xs text-rose-400 mt-1">Within 30 days</p>
         </div>
 
         <div className="p-5 rounded-2xl glass-card border border-dark-border">
@@ -182,7 +179,7 @@ export const DashboardPage: React.FC = () => {
               ? profile.targetCountries.slice(0, 2).join(', ')
               : null) || 'Not set'}
           </div>
-          <p className="text-[10px] text-cyan-400 mt-1">{profile?.targetDegreeLevel || 'MASTERS'} Focus</p>
+          <p className="text-2xs text-cyan-400 mt-1">{profile?.targetDegreeLevel || 'MASTERS'} Focus</p>
         </div>
       </div>
 
@@ -192,7 +189,7 @@ export const DashboardPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
+              <Target className="w-4 h-4 text-brand-400" aria-hidden="true" />
               <span>Recommended Scholarships</span>
             </h2>
             <div className="flex items-center gap-3">
@@ -206,7 +203,10 @@ export const DashboardPage: React.FC = () => {
                 <span>{recalculating ? 'Recalculating...' : 'Refresh Matches'}</span>
               </button>
 
-              <Link to="/scholarships" className="text-xs text-brand-400 font-semibold hover:underline flex items-center gap-1">
+              <Link
+                to="/scholarships"
+                className="text-xs text-brand-400 font-semibold hover:underline flex items-center gap-1"
+              >
                 <span>View All</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
@@ -218,7 +218,10 @@ export const DashboardPage: React.FC = () => {
               const status = rec.eligibilityStatus || rec.eligibility || 'POTENTIALLY_ELIGIBLE';
               const score = rec.matchScore ?? rec.matchPercentage ?? 0;
               const matches = rec.matchingCriteria || rec.matchReasons || [];
-              const issues = [...(rec.missingCriteria || rec.missingReqs || []), ...(rec.uncertainCriteria || rec.concerns || [])];
+              const issues = [
+                ...(rec.missingCriteria || rec.missingReqs || []),
+                ...(rec.uncertainCriteria || rec.concerns || []),
+              ];
 
               return (
                 <div
@@ -233,22 +236,24 @@ export const DashboardPage: React.FC = () => {
                           setSelectedScholarship(rec.scholarship || rec);
                           setSelectedMatch(rec);
                         }}
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition flex items-center gap-1 hover:brightness-110 ${
+                        className={`px-2.5 py-0.5 rounded-full text-2xs font-bold border transition flex items-center gap-1 hover:brightness-110 ${
                           status === 'ELIGIBLE'
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                             : status === 'POTENTIALLY_ELIGIBLE'
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                            : status === 'NOT_ELIGIBLE'
-                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                            : 'bg-slate-700/40 text-slate-300 border-slate-600/40'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                              : status === 'NOT_ELIGIBLE'
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                                : 'bg-slate-700/40 text-slate-300 border-slate-600/40'
                         }`}
                         title="Click to view full AI eligibility explanation"
                       >
-                        <Sparkles className="w-3 h-3 text-cyan-400" />
-                        <span>{score}% • {status.replace(/_/g, ' ')}</span>
+                        <Info className="w-3 h-3" aria-hidden="true" />
+                        <span>
+                          {score}% • {status.replace(/_/g, ' ')}
+                        </span>
                       </button>
 
-                      <span className="text-[11px] text-indigo-300 font-medium">
+                      <span className="text-2xs text-indigo-300 font-medium">
                         {rec.scholarship?.hostCountry || rec.hostCountry}
                       </span>
                     </div>
@@ -258,7 +263,7 @@ export const DashboardPage: React.FC = () => {
                     </h3>
 
                     {/* Quick Match / Issue factors */}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-slate-400">
                       {matches.length > 0 && (
                         <span className="flex items-center gap-1 text-emerald-300 truncate max-w-xs">
                           <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
@@ -288,7 +293,7 @@ export const DashboardPage: React.FC = () => {
 
                     <Link
                       to={`/scholarships/${rec.scholarshipId || rec.id}`}
-                      className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition shadow-md shadow-brand-600/20"
+                      className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition"
                     >
                       View Details
                     </Link>
@@ -309,7 +314,10 @@ export const DashboardPage: React.FC = () => {
                 <span>Upcoming Deadlines</span>
               </h3>
               <div className="flex items-center gap-2">
-                <Link to="/deadlines" className="text-xs text-brand-300 hover:text-white font-semibold flex items-center gap-1 transition">
+                <Link
+                  to="/deadlines"
+                  className="text-xs text-brand-300 hover:text-white font-semibold flex items-center gap-1 transition"
+                >
                   <span>View All</span>
                   <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -320,7 +328,7 @@ export const DashboardPage: React.FC = () => {
               <div className="p-6 rounded-2xl bg-dark-bg/60 border border-dark-border/60 text-center text-xs text-slate-400 space-y-1">
                 <Clock className="w-6 h-6 text-slate-500 mx-auto mb-1" />
                 <p className="text-white font-semibold">No Active Deadlines</p>
-                <p className="text-[11px]">Save scholarships to monitor upcoming submission dates.</p>
+                <p className="text-2xs">Save scholarships to monitor upcoming submission dates.</p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -342,26 +350,26 @@ export const DashboardPage: React.FC = () => {
                           >
                             {d.scholarship.title}
                           </Link>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-2xs text-slate-400">
                             {d.scholarship.hostCountry} • {d.deadlineFormatted}
                           </span>
                         </div>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 border ${
+                          className={`px-2 py-0.5 rounded-full text-2xs font-extrabold shrink-0 border ${
                             isExpired
                               ? 'bg-slate-800 text-slate-400 border-slate-700'
                               : isCritical
-                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                              : isUrgent
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                                : isUrgent
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                           }`}
                         >
                           {isExpired ? 'EXPIRED' : `${d.daysRemaining}d left`}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-dark-border/40 text-slate-400">
+                      <div className="flex items-center justify-between text-2xs pt-1.5 border-t border-dark-border/40 text-slate-400">
                         <span className="inline-flex items-center gap-1 font-medium text-indigo-300">
                           Status: <strong className="text-white">{d.status}</strong>
                         </span>
@@ -389,7 +397,7 @@ export const DashboardPage: React.FC = () => {
               <FileText className="w-4 h-4 text-emerald-400" />
               <div>
                 <div className="font-semibold text-white">Upload & Review CV</div>
-                <div className="text-[10px] text-slate-400">Europass & Academic format checker</div>
+                <div className="text-2xs text-slate-400">Europass & Academic format checker</div>
               </div>
             </Link>
             <Link
@@ -399,7 +407,7 @@ export const DashboardPage: React.FC = () => {
               <BookOpenCheck className="w-4 h-4 text-indigo-400" />
               <div>
                 <div className="font-semibold text-white">Statement of Purpose Helper</div>
-                <div className="text-[10px] text-slate-400">Structure feedback & alignment</div>
+                <div className="text-2xs text-slate-400">Structure feedback & alignment</div>
               </div>
             </Link>
           </div>

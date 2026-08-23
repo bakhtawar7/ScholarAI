@@ -2,23 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../services/api';
 import { DeadlineItem } from '../types';
-import { LoadingState, ErrorState, InlineError } from '../components/common/States';
-import {
-  Clock,
-  AlertTriangle,
-  Calendar,
-  Sparkles,
-  ExternalLink,
-  RotateCw,
-  CheckCircle2,
-  AlertCircle,
-  Filter,
-  ArrowRight,
-  ShieldCheck,
-  Bell,
-  Play,
-  Layers,
-} from 'lucide-react';
+import { LoadingState, ErrorState } from '../components/common/States';
+import { Clock, Calendar, ExternalLink, RotateCw, CheckCircle2, ArrowRight, Bell, Layers } from 'lucide-react';
 
 export const DeadlinesPage: React.FC = () => {
   const [deadlines, setDeadlines] = useState<DeadlineItem[]>([]);
@@ -104,13 +89,9 @@ export const DeadlinesPage: React.FC = () => {
           <button
             onClick={handleRunAutomation}
             disabled={runningAutomation}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 disabled:opacity-50 text-white text-xs font-bold transition shadow-lg shadow-brand-500/20 flex items-center gap-2"
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-2"
           >
-            {runningAutomation ? (
-              <RotateCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Bell className="w-3.5 h-3.5" />
-            )}
+            {runningAutomation ? <RotateCw className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
             <span>{runningAutomation ? 'Running Daily Scan...' : 'Trigger Deadline Alert Scan'}</span>
           </button>
         </div>
@@ -124,15 +105,12 @@ export const DeadlinesPage: React.FC = () => {
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               <span>Daily Deadline Automation Audit Result</span>
             </div>
-            <button
-              onClick={() => setAutomationResult(null)}
-              className="text-slate-400 hover:text-white text-xs"
-            >
+            <button onClick={() => setAutomationResult(null)} className="text-slate-400 hover:text-white text-xs">
               Dismiss
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2 text-[11px]">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2 text-2xs">
             <div className="p-2.5 rounded-xl bg-dark-bg/80 border border-dark-border">
               <span className="text-slate-400 block">Checked Scholarships:</span>
               <strong className="text-sm text-white">{automationResult.checkedScholarshipsCount ?? 0}</strong>
@@ -173,26 +151,22 @@ export const DeadlinesPage: React.FC = () => {
           <button
             onClick={() => setUrgencyFilter('CRITICAL')}
             className={`px-3 py-1.5 rounded-xl font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
-              urgencyFilter === 'CRITICAL'
-                ? 'bg-rose-600 text-white shadow-md'
-                : 'text-rose-400 hover:bg-rose-500/10'
+              urgencyFilter === 'CRITICAL' ? 'bg-rose-600 text-white shadow-md' : 'text-rose-400 hover:bg-rose-500/10'
             }`}
           >
             <span>🔴 Critical (&le;7d)</span>
-            <span className="w-4 h-4 rounded-full bg-dark-bg/80 text-[10px] flex items-center justify-center font-bold">
+            <span className="w-4 h-4 rounded-full bg-dark-bg/80 text-2xs flex items-center justify-center font-bold">
               {criticalCount}
             </span>
           </button>
           <button
             onClick={() => setUrgencyFilter('URGENT')}
             className={`px-3 py-1.5 rounded-xl font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
-              urgencyFilter === 'URGENT'
-                ? 'bg-amber-600 text-white shadow-md'
-                : 'text-amber-400 hover:bg-amber-500/10'
+              urgencyFilter === 'URGENT' ? 'bg-amber-600 text-white shadow-md' : 'text-amber-400 hover:bg-amber-500/10'
             }`}
           >
             <span>🟠 Urgent (&le;30d)</span>
-            <span className="w-4 h-4 rounded-full bg-dark-bg/80 text-[10px] flex items-center justify-center font-bold">
+            <span className="w-4 h-4 rounded-full bg-dark-bg/80 text-2xs flex items-center justify-center font-bold">
               {urgentCount}
             </span>
           </button>
@@ -205,20 +179,18 @@ export const DeadlinesPage: React.FC = () => {
             }`}
           >
             <span>🟢 On Track (&gt;30d)</span>
-            <span className="w-4 h-4 rounded-full bg-dark-bg/80 text-[10px] flex items-center justify-center font-bold">
+            <span className="w-4 h-4 rounded-full bg-dark-bg/80 text-2xs flex items-center justify-center font-bold">
               {upcomingCount}
             </span>
           </button>
           <button
             onClick={() => setUrgencyFilter('EXPIRED')}
             className={`px-3 py-1.5 rounded-xl font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
-              urgencyFilter === 'EXPIRED'
-                ? 'bg-slate-700 text-white shadow-md'
-                : 'text-slate-400 hover:bg-dark-hover'
+              urgencyFilter === 'EXPIRED' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:bg-dark-hover'
             }`}
           >
             <span>Closed / Expired</span>
-            <span className="w-4 h-4 rounded-full bg-dark-bg/80 text-[10px] flex items-center justify-center font-bold">
+            <span className="w-4 h-4 rounded-full bg-dark-bg/80 text-2xs flex items-center justify-center font-bold">
               {expiredCount}
             </span>
           </button>
@@ -232,7 +204,8 @@ export const DeadlinesPage: React.FC = () => {
             <Calendar className="w-10 h-10 text-brand-400 mx-auto" />
             <h3 className="text-base font-bold text-white">No Tracked Deadlines in this Category</h3>
             <p className="text-xs max-w-md mx-auto">
-              Save international scholarships from the Explorer or create an application tracker card to monitor countdown milestones automatically.
+              Save international scholarships from the Explorer or create an application tracker card to monitor
+              countdown milestones automatically.
             </p>
             <div className="pt-2">
               <Link
@@ -259,14 +232,14 @@ export const DeadlinesPage: React.FC = () => {
                 <div className="space-y-1.5 min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span
-                      className={`px-3 py-0.5 rounded-full text-[11px] font-extrabold border ${
+                      className={`px-3 py-0.5 rounded-full text-2xs font-extrabold border ${
                         isExpired
                           ? 'bg-slate-800 text-slate-400 border-slate-700'
                           : isCritical
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                          : isUrgent
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                            : isUrgent
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                       }`}
                     >
                       {isExpired ? 'EXPIRED' : `${item.daysRemaining} Days Remaining`}
@@ -289,7 +262,9 @@ export const DeadlinesPage: React.FC = () => {
 
                   <p className="text-xs text-slate-400">
                     Provider: <span className="text-slate-300">{item.scholarship.provider}</span> • University:{' '}
-                    <span className="text-slate-300">{item.scholarship.university || 'Participating Universities'}</span>
+                    <span className="text-slate-300">
+                      {item.scholarship.university || 'Participating Universities'}
+                    </span>
                   </p>
                 </div>
 
@@ -300,7 +275,7 @@ export const DeadlinesPage: React.FC = () => {
                       <Calendar className="w-4 h-4 text-indigo-400" />
                       <span>{item.deadlineFormatted}</span>
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
+                    <div className="text-2xs text-slate-400 mt-0.5">
                       Status: <strong className="text-white">{item.status}</strong>
                     </div>
                   </div>
@@ -316,7 +291,7 @@ export const DeadlinesPage: React.FC = () => {
 
                     <Link
                       to={`/scholarships/${item.scholarship.id}`}
-                      className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition shadow-md shadow-brand-600/20 flex items-center gap-1"
+                      className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold transition flex items-center gap-1"
                     >
                       <span>Details</span>
                       <ExternalLink className="w-3 h-3" />

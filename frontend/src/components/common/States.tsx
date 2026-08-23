@@ -113,3 +113,37 @@ export const SkeletonCard: React.FC<{ className?: string }> = ({ className = '' 
     </div>
   </div>
 );
+
+/**
+ * The one way this app says "the provider did not state this".
+ *
+ * Missing scholarship fields used to be filled with confident invented values — the same
+ * null tuition figure rendered as "100% Full Tuition Coverage", "100% Waiver",
+ * "100% Tuition Waiver" and "Full Tuition Exemption" in four different places, and a
+ * missing stipend simply read "Provided". For a tool students use to decide where to
+ * apply, that is the most damaging thing the UI could do.
+ *
+ * Rendered dimmed and italic so an unknown is visually distinct from a real value at a
+ * glance, never mistaken for a quoted figure.
+ */
+export const NotStated: React.FC<{ className?: string; label?: string }> = ({
+  className = '',
+  label = 'Not stated',
+}) => (
+  <span className={`italic font-normal text-slate-500 ${className}`} title="The provider did not publish this detail">
+    {label}
+  </span>
+);
+
+/**
+ * Renders a value, or the NotStated marker when it is absent.
+ * Keeps the "is this missing?" decision in one place instead of at every call site.
+ */
+export const ValueOrNotStated: React.FC<{
+  value?: string | null;
+  className?: string;
+  label?: string;
+}> = ({ value, className = '', label }) => {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed ? <span className={className}>{trimmed}</span> : <NotStated label={label} />;
+};

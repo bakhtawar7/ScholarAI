@@ -80,7 +80,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const { Icon } = style;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${style.cls}`}
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-2xs font-bold border ${style.cls}`}
     >
       <Icon className={`w-3 h-3 ${status === 'RUNNING' ? 'animate-spin' : ''}`} aria-hidden="true" />
       {status}
@@ -162,7 +162,7 @@ export const AutomationPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-brand-500/20 shrink-0">
+            <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center shrink-0">
               <Workflow className="w-5 h-5 text-white" aria-hidden="true" />
             </span>
             Automation Console
@@ -205,7 +205,12 @@ export const AutomationPage: React.FC = () => {
             accent: schedulerRunning ? 'text-emerald-400' : 'text-rose-400',
             Icon: Activity,
           },
-          { label: 'Workflows', value: stats?.registeredWorkflows ?? workflows.length, accent: 'text-white', Icon: Workflow },
+          {
+            label: 'Workflows',
+            value: stats?.registeredWorkflows ?? workflows.length,
+            accent: 'text-white',
+            Icon: Workflow,
+          },
           { label: 'Runs (24 h)', value: stats?.runsLast24h ?? 0, accent: 'text-white', Icon: Clock },
           {
             label: 'Failures (24 h)',
@@ -217,7 +222,7 @@ export const AutomationPage: React.FC = () => {
         ].map(({ label, value, accent, Icon }) => (
           <div key={label} className="p-4 rounded-2xl glass-card border border-dark-border">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] text-slate-400 font-medium">{label}</span>
+              <span className="text-2xs text-slate-400 font-medium">{label}</span>
               <Icon className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
             </div>
             <div className={`text-xl font-extrabold ${accent}`}>{value}</div>
@@ -240,18 +245,20 @@ export const AutomationPage: React.FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-white truncate">{wf.name}</h3>
-                    <code className="text-[10px] text-brand-300">{wf.key}</code>
+                    <code className="text-2xs text-brand-300">{wf.key}</code>
                   </div>
-                  {wf.lastRun ? <StatusBadge status={wf.isRunning ? 'RUNNING' : wf.lastRun.status} /> : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-slate-500/15 text-slate-400 border-slate-500/30">
+                  {wf.lastRun ? (
+                    <StatusBadge status={wf.isRunning ? 'RUNNING' : wf.lastRun.status} />
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold border bg-slate-500/15 text-slate-400 border-slate-500/30">
                       NEVER RUN
                     </span>
                   )}
                 </div>
 
-                <p className="text-[11px] text-slate-400 leading-relaxed">{wf.description}</p>
+                <p className="text-2xs text-slate-400 leading-relaxed">{wf.description}</p>
 
-                <dl className="grid grid-cols-2 gap-2 text-[11px]">
+                <dl className="grid grid-cols-2 gap-2 text-2xs">
                   <div>
                     <dt className="text-slate-500">Schedule</dt>
                     <dd className="text-slate-200 font-medium">{formatInterval(wf.intervalMinutes)}</dd>
@@ -277,7 +284,7 @@ export const AutomationPage: React.FC = () => {
                 </dl>
 
                 {wf.lastRun?.errorMessage && (
-                  <p className="text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/25 rounded-lg p-2 break-words">
+                  <p className="text-2xs text-rose-300 bg-rose-500/10 border border-rose-500/25 rounded-lg p-2 break-words">
                     {wf.lastRun.errorMessage}
                   </p>
                 )}
@@ -301,7 +308,7 @@ export const AutomationPage: React.FC = () => {
                   )}
                 </button>
                 {wf.manualOnly && (
-                  <p className="text-[10px] text-amber-300/80">
+                  <p className="text-2xs text-amber-300/80">
                     Requires an input payload — trigger via the API with <code>{'{ payload: { … } }'}</code>.
                   </p>
                 )}
@@ -330,11 +337,21 @@ export const AutomationPage: React.FC = () => {
                 <thead className="bg-dark-bg/60 text-slate-400">
                   <tr>
                     <th scope="col" className="text-left font-semibold px-3 py-2.5 w-8" />
-                    <th scope="col" className="text-left font-semibold px-3 py-2.5">Workflow</th>
-                    <th scope="col" className="text-left font-semibold px-3 py-2.5">Status</th>
-                    <th scope="col" className="text-left font-semibold px-3 py-2.5">Trigger</th>
-                    <th scope="col" className="text-left font-semibold px-3 py-2.5">Started</th>
-                    <th scope="col" className="text-left font-semibold px-3 py-2.5">Duration</th>
+                    <th scope="col" className="text-left font-semibold px-3 py-2.5">
+                      Workflow
+                    </th>
+                    <th scope="col" className="text-left font-semibold px-3 py-2.5">
+                      Status
+                    </th>
+                    <th scope="col" className="text-left font-semibold px-3 py-2.5">
+                      Trigger
+                    </th>
+                    <th scope="col" className="text-left font-semibold px-3 py-2.5">
+                      Started
+                    </th>
+                    <th scope="col" className="text-left font-semibold px-3 py-2.5">
+                      Duration
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -359,7 +376,9 @@ export const AutomationPage: React.FC = () => {
                             </button>
                           </td>
                           <td className="px-3 py-2.5 text-slate-200 font-medium">{run.workflowName}</td>
-                          <td className="px-3 py-2.5"><StatusBadge status={run.status} /></td>
+                          <td className="px-3 py-2.5">
+                            <StatusBadge status={run.status} />
+                          </td>
                           <td className="px-3 py-2.5 text-slate-400">{run.trigger}</td>
                           <td className="px-3 py-2.5 text-slate-400 whitespace-nowrap">
                             {new Date(run.startedAt).toLocaleString()}
@@ -372,22 +391,22 @@ export const AutomationPage: React.FC = () => {
                           <tr className="border-t border-dark-border/40 bg-dark-bg/40">
                             <td colSpan={6} className="px-4 py-3 space-y-2">
                               {run.triggeredBy && (
-                                <p className="text-[11px] text-slate-400">
+                                <p className="text-2xs text-slate-400">
                                   Triggered by <span className="text-slate-200">{run.triggeredBy}</span> · attempt{' '}
                                   {run.attempt}
                                 </p>
                               )}
                               {run.errorMessage && (
-                                <p className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/25 rounded-lg p-2 break-words">
+                                <p className="text-2xs text-rose-300 bg-rose-500/10 border border-rose-500/25 rounded-lg p-2 break-words">
                                   {run.errorMessage}
                                 </p>
                               )}
                               {run.metrics ? (
-                                <pre className="text-[10px] text-slate-300 bg-dark-bg border border-dark-border rounded-lg p-2.5 overflow-auto max-h-56">
+                                <pre className="text-2xs text-slate-300 bg-dark-bg border border-dark-border rounded-lg p-2.5 overflow-auto max-h-56">
                                   {JSON.stringify(run.metrics, null, 2)}
                                 </pre>
                               ) : (
-                                <p className="text-[11px] text-slate-500">No metrics recorded for this run.</p>
+                                <p className="text-2xs text-slate-500">No metrics recorded for this run.</p>
                               )}
                             </td>
                           </tr>

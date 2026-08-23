@@ -1,35 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
-  BookOpenCheck,
-  Sparkles,
-  CheckCircle2,
   AlertCircle,
-  LayoutList,
-  HelpCircle,
-  Wand2,
-  FileEdit,
   ArrowRight,
-  ShieldCheck,
-  RotateCw,
-  Lightbulb,
+  BookOpenCheck,
   Check,
-  Copy,
-  ChevronRight,
-  FileText,
-  Save,
-  Trash2,
+  CheckCircle2,
   Clock,
-  History,
-  Send,
-  Plus,
+  Copy,
+  FileEdit,
+  HelpCircle,
+  LayoutList,
+  Lightbulb,
+  Loader2,
+  RotateCw,
+  Save,
+  ShieldCheck,
+  Trash2,
+  Wand2,
 } from 'lucide-react';
 import { SOPFeedbackResult, SOPOutlineSection, SOPQuestion, SOPSession } from '../types';
 
 export const SOPAssistantPage: React.FC = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'guided' | 'outline' | 'editor' | 'refine'>('guided');
-  const [targetScholarshipTitle, setTargetScholarshipTitle] = useState('DAAD Postgraduate Study Scholarship in Germany');
-  const [fieldOfStudy, setFieldOfStudy] = useState('Computer Science & AI');
+  const [targetScholarshipTitle, setTargetScholarshipTitle] = useState(
+    'DAAD Postgraduate Study Scholarship in Germany'
+  );
+  /**
+   * Seeded from the student's own profile.
+   *
+   * This was a hardcoded 'Computer Science & AI' whose setter was never called, so every
+   * student — whatever they actually study — had their SOP questions and outline generated
+   * for Computer Science. The literal now serves only as a fallback for a profile that has
+   * not been filled in yet.
+   */
+  const [fieldOfStudy, setFieldOfStudy] = useState(
+    () => user?.profile?.fieldOfStudy || user?.profile?.preferredFields?.[0] || 'Computer Science & AI'
+  );
+
+  // The profile arrives asynchronously via /auth/me, so adopt it once it lands — but never
+  // overwrite a value the student has since edited themselves.
+  const [fieldEdited, setFieldEdited] = useState(false);
+  useEffect(() => {
+    if (fieldEdited) return;
+    const fromProfile = user?.profile?.fieldOfStudy || user?.profile?.preferredFields?.[0];
+    if (fromProfile) setFieldOfStudy(fromProfile);
+  }, [user, fieldEdited]);
 
   // Guided Questions State
   const [questions, setQuestions] = useState<SOPQuestion[]>([]);
@@ -56,7 +74,9 @@ export const SOPAssistantPage: React.FC = () => {
   // Refinement State
   const [sectionToRefine, setSectionToRefine] = useState('Paragraph 1: Introduction & Hook');
   const [originalSectionText, setOriginalSectionText] = useState('');
-  const [refinementInstructions, setRefinementInstructions] = useState('Improve academic vocabulary, active voice, and conciseness');
+  const [refinementInstructions, setRefinementInstructions] = useState(
+    'Improve academic vocabulary, active voice, and conciseness'
+  );
   const [refinementResult, setRefinementResult] = useState<any | null>(null);
   const [loadingRefine, setLoadingRefine] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -255,7 +275,23 @@ export const SOPAssistantPage: React.FC = () => {
             value={targetScholarshipTitle}
             onChange={(e) => setTargetScholarshipTitle(e.target.value)}
             placeholder="Target Scholarship / Program"
+            aria-label="Target scholarship or programme"
             className="bg-dark-card border border-dark-border rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 w-64 shadow-sm"
+          />
+
+          {/* Field of study drives the generated questions and outline. It defaults to the
+              student's profile and is editable here, since an SOP is often written for a
+              programme in a different field from the current degree. */}
+          <input
+            type="text"
+            value={fieldOfStudy}
+            onChange={(e) => {
+              setFieldEdited(true);
+              setFieldOfStudy(e.target.value);
+            }}
+            placeholder="Field of Study"
+            aria-label="Field of study"
+            className="bg-dark-card border border-dark-border rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 w-52 shadow-sm"
           />
 
           {sessions.length > 0 && (
@@ -293,13 +329,11 @@ export const SOPAssistantPage: React.FC = () => {
                   <span className="font-bold text-indigo-300 truncate max-w-[170px]">
                     {sess.targetScholarship || 'Scholarship Draft'}
                   </span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-2xs text-slate-400">
                     {new Date(sess.updatedAt || sess.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-2">
-                  {sess.draftSnippet || 'Draft text...'}
-                </p>
+                <p className="text-2xs text-slate-400 line-clamp-2">{sess.draftSnippet || 'Draft text...'}</p>
                 <button
                   onClick={(e) => handleDeleteSession(sess.id, e)}
                   className="absolute top-2 right-2 p-1 text-slate-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100"
@@ -386,7 +420,8 @@ export const SOPAssistantPage: React.FC = () => {
               <div>
                 <h3 className="font-bold text-base text-white">Guided Statement Discovery</h3>
                 <p className="text-xs text-slate-400">
-                  Answer strategic prompts to articulate your authentic background and career goals without fabricating credentials.
+                  Answer strategic prompts to articulate your authentic background and career goals without fabricating
+                  credentials.
                 </p>
               </div>
               <span className="text-xs font-semibold text-brand-300 bg-brand-500/10 border border-brand-500/30 px-3 py-1 rounded-xl">
@@ -402,29 +437,34 @@ export const SOPAssistantPage: React.FC = () => {
             ) : (
               <div className="space-y-5">
                 {questions.map((q, idx) => (
-                  <div key={q.id || idx} className="p-4 rounded-2xl bg-dark-bg/80 border border-dark-border space-y-2 text-xs">
+                  <div
+                    key={q.id || idx}
+                    className="p-4 rounded-2xl bg-dark-bg/80 border border-dark-border space-y-2 text-xs"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-white flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-brand-600 text-[11px] flex items-center justify-center text-white font-bold">
+                        <span className="w-5 h-5 rounded-full bg-brand-600 text-2xs flex items-center justify-center text-white font-bold">
                           {idx + 1}
                         </span>
                         <span>{q.category}</span>
                       </span>
                       {answers[`q${idx + 1}`]?.trim() && (
-                        <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
+                        <span className="text-2xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1">
                           <Check className="w-3 h-3" /> Answered
                         </span>
                       )}
                     </div>
 
                     <p className="text-slate-300 font-medium">{q.question}</p>
-                    <p className="text-[11px] text-slate-400 italic">💡 Strategy Hint: {q.hint}</p>
+                    <p className="text-2xs text-slate-400 italic">💡 Strategy Hint: {q.hint}</p>
 
                     <textarea
                       rows={3}
                       value={answers[`q${idx + 1}`] || ''}
                       onChange={(e) => setAnswers({ ...answers, [`q${idx + 1}`]: e.target.value })}
-                      placeholder={q.placeholder || 'Write your authentic project experience, thesis focus, or goals here...'}
+                      placeholder={
+                        q.placeholder || 'Write your authentic project experience, thesis focus, or goals here...'
+                      }
                       className="w-full bg-dark-card border border-dark-border rounded-xl p-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition leading-relaxed resize-none text-xs"
                     />
                   </div>
@@ -434,7 +474,7 @@ export const SOPAssistantPage: React.FC = () => {
                   <button
                     onClick={handleGenerateOutline}
                     disabled={loadingOutline}
-                    className="px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-brand-500/20 transition"
+                    className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition"
                   >
                     {loadingOutline ? (
                       <>
@@ -478,7 +518,8 @@ export const SOPAssistantPage: React.FC = () => {
                 <LayoutList className="w-10 h-10 text-brand-400 mx-auto" />
                 <h4 className="text-sm font-bold text-white">No Outline Generated Yet</h4>
                 <p className="text-xs max-w-sm mx-auto">
-                  Complete the guided questions in Step 1 or generate a standard 5-paragraph blueprint for your target scholarship.
+                  Complete the guided questions in Step 1 or generate a standard 5-paragraph blueprint for your target
+                  scholarship.
                 </p>
                 <div className="pt-2">
                   <button
@@ -492,21 +533,24 @@ export const SOPAssistantPage: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 {outline.map((sec, idx) => (
-                  <div key={idx} className="p-4 rounded-2xl bg-dark-bg/80 border border-dark-border hover:border-brand-500/40 transition space-y-2 text-xs">
+                  <div
+                    key={idx}
+                    className="p-4 rounded-2xl bg-dark-bg/80 border border-dark-border hover:border-brand-500/40 transition space-y-2 text-xs"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-white flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold">
+                        <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-2xs font-bold">
                           Paragraph {sec.paragraphNumber || idx + 1}
                         </span>
                         <span>{sec.sectionTitle}</span>
                       </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">{sec.recommendedWordCount}</span>
+                      <span className="text-2xs text-slate-400 font-semibold">{sec.recommendedWordCount}</span>
                     </div>
 
                     <p className="text-slate-300">{sec.purpose}</p>
 
                     {sec.userContent && (
-                      <div className="p-2.5 rounded-xl bg-dark-card/80 border border-brand-500/20 text-[11px] text-slate-200">
+                      <div className="p-2.5 rounded-xl bg-dark-card/80 border border-brand-500/20 text-2xs text-slate-200">
                         <span className="text-cyan-300 font-semibold block mb-0.5">Your Brainstormed Input:</span>
                         <p>{sec.userContent}</p>
                       </div>
@@ -514,7 +558,7 @@ export const SOPAssistantPage: React.FC = () => {
 
                     {sec.keyElements && (
                       <div className="pt-1">
-                        <span className="text-[11px] text-cyan-300 font-bold block mb-1">Checklist Points:</span>
+                        <span className="text-2xs text-cyan-300 font-bold block mb-1">Checklist Points:</span>
                         <ul className="space-y-1 text-slate-400 pl-1">
                           {sec.keyElements.map((el: string, elIdx: number) => (
                             <li key={elIdx}>• {el}</li>
@@ -541,14 +585,14 @@ export const SOPAssistantPage: React.FC = () => {
                 <span>Statement of Purpose Draft</span>
               </h3>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-400 font-semibold">
+                <span className="text-2xs text-slate-400 font-semibold">
                   Word Count: <strong className="text-white">{wordCount} words</strong>
                 </span>
                 <button
                   type="button"
                   onClick={handleSaveDraft}
                   disabled={savingDraft || !draftText.trim()}
-                  className="px-3 py-1 rounded-xl bg-dark-card border border-dark-border hover:border-emerald-500/40 text-slate-300 hover:text-white flex items-center gap-1 text-[11px] font-semibold transition"
+                  className="px-3 py-1 rounded-xl bg-dark-card border border-dark-border hover:border-emerald-500/40 text-slate-300 hover:text-white flex items-center gap-1 text-2xs font-semibold transition"
                 >
                   <Save className="w-3 h-3 text-emerald-400" />
                   <span>{savingDraft ? 'Saving...' : 'Save Draft'}</span>
@@ -570,16 +614,16 @@ export const SOPAssistantPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loadingAnalysis || !draftText.trim()}
-                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2 transition"
+                  className="flex-1 py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white font-bold flex items-center justify-center gap-2 transition"
                 >
                   {loadingAnalysis ? (
                     <>
-                      <Sparkles className="w-4 h-4 animate-spin text-cyan-300" />
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                       <span>Evaluating Structure, Clarity & Scholarship Alignment...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-white" />
+                      <Wand2 className="w-4 h-4" aria-hidden="true" />
                       <span>Analyze Draft Alignment & Missing Details</span>
                     </>
                   )}
@@ -595,7 +639,8 @@ export const SOPAssistantPage: React.FC = () => {
                 <BookOpenCheck className="w-12 h-12 text-slate-600" />
                 <h3 className="text-base font-bold text-white">SOP Evaluation Dashboard</h3>
                 <p className="text-xs max-w-xs mx-auto">
-                  Click "Analyze Draft" to evaluate hook impact, paragraph flow, scholarship alignment, and missing arguments.
+                  Click "Analyze Draft" to evaluate hook impact, paragraph flow, scholarship alignment, and missing
+                  arguments.
                 </p>
               </div>
             ) : (
@@ -608,18 +653,18 @@ export const SOPAssistantPage: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-3xl font-black text-cyan-400">{feedback.alignmentScore || 85}%</div>
-                    <div className="text-[10px] text-slate-400 font-semibold uppercase">Alignment Score</div>
+                    <div className="text-2xs text-slate-400 font-semibold uppercase">Alignment Score</div>
                   </div>
                 </div>
 
                 {/* Structure Rating & Grammar Summary */}
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="p-3 rounded-2xl bg-dark-bg/80 border border-dark-border">
-                    <span className="text-slate-400 block text-[10px]">Structure & Flow:</span>
+                    <span className="text-slate-400 block text-2xs">Structure & Flow:</span>
                     <strong className="text-white text-xs">{feedback.structureRating || 'Strong (4.2 / 5.0)'}</strong>
                   </div>
                   <div className="p-3 rounded-2xl bg-dark-bg/80 border border-dark-border">
-                    <span className="text-slate-400 block text-[10px]">Clarity Rating:</span>
+                    <span className="text-slate-400 block text-2xs">Clarity Rating:</span>
                     <strong className="text-emerald-400 text-xs">{feedback.clarityScore || 88}%</strong>
                   </div>
                 </div>
@@ -648,7 +693,10 @@ export const SOPAssistantPage: React.FC = () => {
                     </span>
                     <ul className="space-y-1 text-amber-200/90 pl-1">
                       {feedback.missingInformation.map((m: string, idx: number) => (
-                        <li key={idx}>⚠️ {m}</li>
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <AlertCircle className="w-3 h-3 text-amber-400 mt-1 shrink-0" aria-hidden="true" />
+                          <span>{m}</span>
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -666,7 +714,7 @@ export const SOPAssistantPage: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <span className="font-semibold text-white">{sec.section}</span>
                             <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              className={`px-2 py-0.5 rounded-md text-2xs font-bold ${
                                 sec.status === 'STRONG'
                                   ? 'bg-emerald-500/20 text-emerald-300'
                                   : 'bg-amber-500/20 text-amber-300'
@@ -675,8 +723,8 @@ export const SOPAssistantPage: React.FC = () => {
                               {sec.status}
                             </span>
                           </div>
-                          <p className="text-slate-300 text-[11px]">{sec.feedback}</p>
-                          <p className="text-[10px] text-cyan-300">💡 {sec.suggestion}</p>
+                          <p className="text-slate-300 text-2xs">{sec.feedback}</p>
+                          <p className="text-2xs text-cyan-300">💡 {sec.suggestion}</p>
                         </div>
                       ))}
                     </div>
@@ -720,11 +768,21 @@ export const SOPAssistantPage: React.FC = () => {
                   onChange={(e) => setSectionToRefine(e.target.value)}
                   className="w-full bg-dark-card border border-dark-border rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-brand-500"
                 >
-                  <option value="Paragraph 1: Introduction & Hook">Paragraph 1: Introduction & Intellectual Hook</option>
-                  <option value="Paragraph 2: Academic Background & Foundation">Paragraph 2: Academic Background & Preparation</option>
-                  <option value="Paragraph 3: Key Research & Flagship Project">Paragraph 3: Key Project & Research Methodology</option>
-                  <option value="Paragraph 4: Program Fit & Faculty Labs">Paragraph 4: Program Fit & Specific Faculty Alignment</option>
-                  <option value="Paragraph 5: Long-Term Career Vision & Impact">Paragraph 5: Long-Term Career Vision & Contribution</option>
+                  <option value="Paragraph 1: Introduction & Hook">
+                    Paragraph 1: Introduction & Intellectual Hook
+                  </option>
+                  <option value="Paragraph 2: Academic Background & Foundation">
+                    Paragraph 2: Academic Background & Preparation
+                  </option>
+                  <option value="Paragraph 3: Key Research & Flagship Project">
+                    Paragraph 3: Key Project & Research Methodology
+                  </option>
+                  <option value="Paragraph 4: Program Fit & Faculty Labs">
+                    Paragraph 4: Program Fit & Specific Faculty Alignment
+                  </option>
+                  <option value="Paragraph 5: Long-Term Career Vision & Impact">
+                    Paragraph 5: Long-Term Career Vision & Contribution
+                  </option>
                 </select>
               </div>
 
@@ -750,13 +808,14 @@ export const SOPAssistantPage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 rounded-2xl bg-dark-bg/60 border border-dark-border/60 text-[11px] text-slate-400 space-y-1">
+              <div className="p-3 rounded-2xl bg-dark-bg/60 border border-dark-border/60 text-2xs text-slate-400 space-y-1">
                 <span className="font-bold text-slate-300 flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Strict Anti-Fabrication Rule:</span>
                 </span>
                 <p>
-                  Refinements polish sentence flow and academic diction while strictly preserving your authentic facts. No experiences, awards, or personal stories will be invented.
+                  Refinements polish sentence flow and academic diction while strictly preserving your authentic facts.
+                  No experiences, awards, or personal stories will be invented.
                 </p>
               </div>
 
@@ -764,7 +823,7 @@ export const SOPAssistantPage: React.FC = () => {
                 type="button"
                 onClick={handleRefineSection}
                 disabled={loadingRefine || !originalSectionText.trim()}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold flex items-center justify-center gap-2 transition"
               >
                 {loadingRefine ? (
                   <>
@@ -814,15 +873,15 @@ export const SOPAssistantPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <span className="font-bold text-purple-300 block">✨ Polished Academic Version:</span>
+                  <span className="font-bold text-purple-300 block">Polished version:</span>
                   <div className="p-4 rounded-2xl bg-dark-bg/90 border border-purple-500/30 text-slate-200 text-xs leading-relaxed whitespace-pre-wrap">
                     {refinementResult.refinedText}
                   </div>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-dark-card/60 border border-dark-border space-y-1">
-                  <span className="font-bold text-cyan-300 block text-[11px]">Editorial Changes & Rationale:</span>
-                  <p className="text-slate-300 text-[11px]">{refinementResult.changesExplanation}</p>
+                  <span className="font-bold text-cyan-300 block text-2xs">Editorial Changes & Rationale:</span>
+                  <p className="text-slate-300 text-2xs">{refinementResult.changesExplanation}</p>
                 </div>
               </div>
             )}

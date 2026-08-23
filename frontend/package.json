@@ -4,9 +4,15 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node_modules\\.bin\\vite",
-    "build": "node_modules\\.bin\\tsc && node_modules\\.bin\\vite build",
-    "preview": "node_modules\\.bin\\vite preview"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings 106",
+    "lint:strict": "eslint \"src/**/*.{ts,tsx}\" --max-warnings 0",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },
   "dependencies": {
     "@sentry/react": "^10.70.0",
@@ -18,13 +24,20 @@
     "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^15.15.0",
     "postcss": "^8.4.35",
+    "prettier": "^3.9.6",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
+    "typescript-eslint": "^8.67.0",
     "vite": "^5.1.6"
   }
 }

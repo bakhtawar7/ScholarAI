@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
 import { Scholarship, ScholarshipMatch } from '../../types';
 import { EligibilityExplanationModal } from './EligibilityExplanationModal';
-import {
-  Sparkles,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  HelpCircle,
-  ChevronRight,
-  Info,
-} from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, HelpCircle, Info, XCircle } from 'lucide-react';
 
 interface MatchCardProps {
   scholarship: Scholarship;
@@ -34,9 +26,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
   const score = match.matchScore ?? match.matchPercentage ?? 0;
   const status = match.eligibilityStatus ?? match.eligibility ?? 'POTENTIALLY_ELIGIBLE';
 
-  const matchingCriteria = match.matchingCriteria?.length ? match.matchingCriteria : (match.matchReasons || []);
-  const missingCriteria = match.missingCriteria?.length ? match.missingCriteria : (match.missingReqs || []);
-  const uncertainCriteria = match.uncertainCriteria?.length ? match.uncertainCriteria : (match.concerns || []);
+  const matchingCriteria = match.matchingCriteria?.length ? match.matchingCriteria : match.matchReasons || [];
+  const missingCriteria = match.missingCriteria?.length ? match.missingCriteria : match.missingReqs || [];
+  const uncertainCriteria = match.uncertainCriteria?.length ? match.uncertainCriteria : match.concerns || [];
 
   const getStatusBadge = (st: string) => {
     switch (st) {
@@ -83,42 +75,40 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         {/* Header Row */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 border ${statusConfig.badgeClass}`}>
+            <span
+              className={`px-2.5 py-0.5 rounded-lg text-2xs font-bold flex items-center gap-1.5 border ${statusConfig.badgeClass}`}
+            >
               <StatusIcon className="w-3.5 h-3.5" />
               <span>{statusConfig.label}</span>
             </span>
 
-            <span className="text-[10px] text-slate-400 font-mono">
-              AI Assessment
-            </span>
+            <span className="text-2xs text-slate-400 font-mono">AI Assessment</span>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className={`text-base font-black ${statusConfig.scoreColor}`}>
-              {score}%
-            </span>
-            <span className="text-[10px] text-slate-400 font-medium">Match</span>
+            <span className={`text-base font-black ${statusConfig.scoreColor}`}>{score}%</span>
+            <span className="text-2xs text-slate-400 font-medium">Match</span>
           </div>
         </div>
 
         {/* Quick Highlights Summary */}
         <div className="space-y-1.5 text-xs">
           {matchingCriteria.slice(0, 2).map((item, idx) => (
-            <div key={idx} className="flex items-start gap-1.5 text-slate-300 text-[11px]">
+            <div key={idx} className="flex items-start gap-1.5 text-slate-300 text-2xs">
               <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
               <span className="truncate">{item}</span>
             </div>
           ))}
 
           {uncertainCriteria.slice(0, 1).map((item, idx) => (
-            <div key={idx} className="flex items-start gap-1.5 text-amber-200/90 text-[11px]">
+            <div key={idx} className="flex items-start gap-1.5 text-amber-200/90 text-2xs">
               <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
               <span className="truncate">{item}</span>
             </div>
           ))}
 
           {missingCriteria.slice(0, 1).map((item, idx) => (
-            <div key={idx} className="flex items-start gap-1.5 text-rose-200/90 text-[11px]">
+            <div key={idx} className="flex items-start gap-1.5 text-rose-200/90 text-2xs">
               <XCircle className="w-3 h-3 text-rose-400 shrink-0 mt-0.5" />
               <span className="truncate">{item}</span>
             </div>
@@ -131,7 +121,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             onClick={() => setModalOpen(true)}
             className="w-full py-2 px-3 rounded-xl bg-dark-bg border border-dark-border hover:border-brand-500/50 hover:bg-brand-500/10 text-brand-300 font-semibold text-xs transition flex items-center justify-center gap-1.5"
           >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <Info className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Explain Match & View Breakdown</span>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           </button>

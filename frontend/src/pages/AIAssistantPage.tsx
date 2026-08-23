@@ -2,36 +2,33 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../services/api';
 import { Markdown } from '../components/common/Markdown';
-import { ChatMessage, Scholarship, ScholarshipMatch } from '../types';
+import { ChatMessage } from '../types';
 import {
+  AlertCircle,
+  ArrowRight,
+  BookOpenCheck,
   Bot,
-  User,
-  Sparkles,
-  Send,
-  Plus,
-  Trash2,
-  Edit2,
   Check,
-  X,
-  Wrench,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Bookmark,
-  CheckCircle2,
-  AlertCircle,
   Clock,
-  ExternalLink,
-  RotateCw,
   Copy,
-  Info,
-  Scale,
-  Calendar,
-  Layers,
-  ArrowRight,
-  ShieldCheck,
+  Edit2,
   FileText,
-  BookOpenCheck,
+  Layers,
+  Loader2,
+  Plus,
+  RotateCw,
+  Scale,
+  Search,
+  Send,
+  ShieldCheck,
+  Trash2,
+  User,
   Wand2,
+  Wrench,
+  X,
 } from 'lucide-react';
 
 interface ConversationSession {
@@ -60,7 +57,7 @@ export const AIAssistantPage: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const suggestedPrompts = [
-    { label: 'Find fully funded scholarships for me', icon: Sparkles },
+    { label: 'Find fully funded scholarships for me', icon: Search },
     { label: 'Review my CV for scholarship readiness', icon: FileText },
     { label: 'Help me structure my Statement of Purpose', icon: BookOpenCheck },
     { label: 'Check my eligibility', icon: ShieldCheck },
@@ -129,7 +126,7 @@ export const AIAssistantPage: React.FC = () => {
         {
           id: 'welcome-' + Date.now(),
           sender: 'ASSISTANT',
-          content: `Hello! I am your **AI Scholarship Copilot** — connected directly to your academic profile and our verified scholarship database.\n\nAsk me to discover matching funding opportunities, evaluate your prerequisites, manage application deadlines, or compare financial packages.`,
+          content: `Hello! I am your **ScholarAI assistant** — connected directly to your academic profile and our verified scholarship database.\n\nAsk me to discover matching funding opportunities, evaluate your prerequisites, manage application deadlines, or compare financial packages.`,
           createdAt: new Date().toISOString(),
         },
       ]);
@@ -168,9 +165,7 @@ export const AIAssistantPage: React.FC = () => {
 
     try {
       const updated = await api.renameConversation(convId, editTitle.trim());
-      setConversations((prev) =>
-        prev.map((c) => (c.id === convId ? { ...c, title: updated.title } : c))
-      );
+      setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, title: updated.title } : c)));
       setEditingSessionId(null);
     } catch (err) {
       console.error('Failed to rename session:', err);
@@ -259,12 +254,12 @@ export const AIAssistantPage: React.FC = () => {
         <div className="space-y-4 flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between pb-3 border-b border-dark-border/60">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-white">
                 <Bot className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white">Chat Sessions</h3>
-                <p className="text-[10px] text-slate-400">Authenticated Context</p>
+                <p className="text-2xs text-slate-400">Authenticated Context</p>
               </div>
             </div>
             <button
@@ -322,7 +317,7 @@ export const AIAssistantPage: React.FC = () => {
                       <>
                         <div className="flex-1 min-w-0 pr-2">
                           <p className="font-semibold truncate">{conv.title}</p>
-                          <p className="text-[10px] text-slate-500">
+                          <p className="text-2xs text-slate-500">
                             {new Date(conv.createdAt).toLocaleDateString([], {
                               month: 'short',
                               day: 'numeric',
@@ -361,13 +356,13 @@ export const AIAssistantPage: React.FC = () => {
         {/* User Status Card */}
         {userProfile && (
           <div className="p-3 rounded-2xl bg-dark-card/90 border border-dark-border mt-3 text-xs space-y-1">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+            <div className="flex items-center justify-between text-2xs font-semibold text-slate-300">
               <span className="truncate">{userProfile.fullName}</span>
-              <span className="px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 text-[10px]">
+              <span className="px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 text-2xs">
                 GPA {userProfile.gpa}/{userProfile.maxGpa}
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 truncate">
+            <p className="text-2xs text-slate-400 truncate">
               {userProfile.targetDegreeLevel} • {userProfile.fieldOfStudy}
             </p>
           </div>
@@ -377,15 +372,15 @@ export const AIAssistantPage: React.FC = () => {
       {/* MAIN CHAT AREA */}
       <div className="flex-1 glass-panel border border-dark-border rounded-3xl flex flex-col min-w-0 overflow-hidden shadow-2xl">
         {/* Chat Header */}
-        <div className="p-4 bg-gradient-to-r from-dark-card via-brand-950/40 to-dark-card border-b border-dark-border flex items-center justify-between">
+        <div className="p-4 bg-dark-card border-b border-dark-border flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-brand-500/25">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-brand-600 flex items-center justify-center text-white">
+              <Bot className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-base text-white">AI Scholarship Copilot</h2>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <h2 className="font-bold text-base text-white">ScholarAI assistant</h2>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   15 Tools Orchestrator
                 </span>
@@ -409,7 +404,7 @@ export const AIAssistantPage: React.FC = () => {
 
         {/* Suggested Prompts Carousel */}
         <div className="p-3 bg-dark-bg/60 border-b border-dark-border/40 flex items-center gap-2 overflow-x-auto scrollbar-none">
-          <span className="text-[11px] font-semibold text-slate-500 shrink-0 ml-1">Suggested:</span>
+          <span className="text-2xs font-semibold text-slate-500 shrink-0 ml-1">Suggested:</span>
           {suggestedPrompts.map((sp, idx) => {
             const Icon = sp.icon;
             return (
@@ -433,10 +428,7 @@ export const AIAssistantPage: React.FC = () => {
             const toolCalls = parseToolCalls(m.toolCalls);
 
             return (
-              <div
-                key={m.id || idx}
-                className={`flex gap-3.5 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}
-              >
+              <div key={m.id || idx} className={`flex gap-3.5 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start`}>
                 {/* Avatar */}
                 <div
                   className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
@@ -470,17 +462,17 @@ export const AIAssistantPage: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <Wrench className="w-3.5 h-3.5 text-cyan-400" />
                                 <span className="font-bold text-white">{tc.toolName}</span>
-                                <span className="text-[10px] text-slate-400 font-normal">
+                                <span className="text-2xs text-slate-400 font-normal">
                                   {tc.args ? JSON.stringify(tc.args).slice(0, 45) : ''}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 {isSuccess ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                                  <span className="inline-flex items-center gap-1 text-2xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                                     <CheckCircle2 className="w-3 h-3" /> Done
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
+                                  <span className="inline-flex items-center gap-1 text-2xs text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
                                     <AlertCircle className="w-3 h-3" /> Error
                                   </span>
                                 )}
@@ -494,7 +486,7 @@ export const AIAssistantPage: React.FC = () => {
 
                             {/* Expanded JSON details */}
                             {isExpanded && (
-                              <div className="mt-2.5 pt-2.5 border-t border-dark-border/60 text-[11px] space-y-1.5">
+                              <div className="mt-2.5 pt-2.5 border-t border-dark-border/60 text-2xs space-y-1.5">
                                 <div>
                                   <span className="text-slate-400 font-semibold">Arguments:</span>
                                   <pre className="mt-1 p-2 rounded-lg bg-dark-card text-indigo-300 overflow-x-auto">
@@ -522,19 +514,19 @@ export const AIAssistantPage: React.FC = () => {
                                     >
                                       <div>
                                         <div className="flex items-center justify-between gap-1 mb-1">
-                                          <span className="text-[10px] font-bold text-cyan-400 uppercase">
+                                          <span className="text-2xs font-bold text-cyan-400 uppercase">
                                             {item.hostCountry}
                                           </span>
                                           {item.matchScore && (
-                                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                                            <span className="text-2xs font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
                                               {item.matchScore}% Match
                                             </span>
                                           )}
                                         </div>
                                         <h4 className="font-bold text-xs text-white line-clamp-1">{item.title}</h4>
-                                        <p className="text-[10px] text-slate-400 mt-0.5">{item.fundingType}</p>
+                                        <p className="text-2xs text-slate-400 mt-0.5">{item.fundingType}</p>
                                       </div>
-                                      <div className="mt-2 pt-2 border-t border-dark-border/40 flex items-center justify-between text-[10px]">
+                                      <div className="mt-2 pt-2 border-t border-dark-border/40 flex items-center justify-between text-2xs">
                                         <span className="text-slate-400">
                                           {item.deadline
                                             ? new Date(item.deadline).toLocaleDateString([], {
@@ -568,9 +560,12 @@ export const AIAssistantPage: React.FC = () => {
                                   </span>
                                 </div>
                                 {tc.result.matchingCriteria?.length > 0 && (
-                                  <div className="text-[11px] text-emerald-300/90 space-y-0.5">
+                                  <div className="text-2xs text-emerald-300/90 space-y-0.5">
                                     {tc.result.matchingCriteria.slice(0, 2).map((crit: string, cIdx: number) => (
-                                      <p key={cIdx}>✓ {crit}</p>
+                                      <p key={cIdx} className="flex items-start gap-1.5">
+                                        <Check className="w-3 h-3 text-emerald-400 mt-1 shrink-0" aria-hidden="true" />
+                                        <span>{crit}</span>
+                                      </p>
                                     ))}
                                   </div>
                                 )}
@@ -578,77 +573,83 @@ export const AIAssistantPage: React.FC = () => {
                             )}
 
                             {/* 3. Deadlines List Cards */}
-                            {tc.toolName === 'getUpcomingDeadlines' && Array.isArray(tc.result) && tc.result.length > 0 && (
-                              <div className="mt-2.5 pt-2 space-y-1.5 font-sans not-italic">
-                                {tc.result.slice(0, 3).map((d: any, dIdx: number) => (
-                                  <div
-                                    key={dIdx}
-                                    className="p-2 rounded-xl bg-dark-card border border-amber-500/30 flex items-center justify-between text-xs"
-                                  >
-                                    <div>
-                                      <p className="font-bold text-white text-[11px] truncate max-w-[200px]">
-                                        {d.title}
-                                      </p>
-                                      <p className="text-[10px] text-slate-400">
-                                        Due {d.deadlineFormatted} ({d.daysRemaining} days left)
-                                      </p>
-                                    </div>
-                                    <button
-                                      onClick={() => handleSend(`Set a reminder for ${d.title} deadline`)}
-                                      className="px-2 py-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-white text-[10px] font-semibold transition"
+                            {tc.toolName === 'getUpcomingDeadlines' &&
+                              Array.isArray(tc.result) &&
+                              tc.result.length > 0 && (
+                                <div className="mt-2.5 pt-2 space-y-1.5 font-sans not-italic">
+                                  {tc.result.slice(0, 3).map((d: any, dIdx: number) => (
+                                    <div
+                                      key={dIdx}
+                                      className="p-2 rounded-xl bg-dark-card border border-amber-500/30 flex items-center justify-between text-xs"
                                     >
-                                      Set Reminder
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                                      <div>
+                                        <p className="font-bold text-white text-2xs truncate max-w-[200px]">
+                                          {d.title}
+                                        </p>
+                                        <p className="text-2xs text-slate-400">
+                                          Due {d.deadlineFormatted} ({d.daysRemaining} days left)
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => handleSend(`Set a reminder for ${d.title} deadline`)}
+                                        className="px-2 py-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-white text-2xs font-semibold transition"
+                                      >
+                                        Set Reminder
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
 
                             {/* 4. CV Analysis Structured Card */}
-                            {(tc.toolName === 'getCVAnalysis' || tc.toolName === 'analyzeCV') && tc.result?.score !== undefined && (
-                              <div className="mt-2.5 pt-2 p-3.5 rounded-2xl bg-dark-card/90 border border-emerald-500/30 font-sans not-italic space-y-2.5 text-xs">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-emerald-400" />
-                                    <span className="font-bold text-white">CV Review Score</span>
-                                  </div>
-                                  <span className="font-extrabold text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded-lg border border-emerald-500/30">
-                                    {tc.result.score} / 100
-                                  </span>
-                                </div>
-
-                                {tc.result.skillsFound?.length > 0 && (
-                                  <div>
-                                    <span className="text-[10px] text-slate-400 block mb-1">Extracted Skills:</span>
-                                    <div className="flex flex-wrap gap-1">
-                                      {tc.result.skillsFound.slice(0, 6).map((s: string, sIdx: number) => (
-                                        <span key={sIdx} className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px]">
-                                          {s}
-                                        </span>
-                                      ))}
+                            {(tc.toolName === 'getCVAnalysis' || tc.toolName === 'analyzeCV') &&
+                              tc.result?.score !== undefined && (
+                                <div className="mt-2.5 pt-2 p-3.5 rounded-2xl bg-dark-card/90 border border-emerald-500/30 font-sans not-italic space-y-2.5 text-xs">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <FileText className="w-4 h-4 text-emerald-400" />
+                                      <span className="font-bold text-white">CV Review Score</span>
                                     </div>
+                                    <span className="font-extrabold text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded-lg border border-emerald-500/30">
+                                      {tc.result.score} / 100
+                                    </span>
                                   </div>
-                                )}
 
-                                {tc.result.missingInformation?.length > 0 && (
-                                  <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300">
-                                    <span className="font-bold block mb-0.5">⚠️ Missing Information:</span>
-                                    <p className="line-clamp-2">{tc.result.missingInformation[0]}</p>
+                                  {tc.result.skillsFound?.length > 0 && (
+                                    <div>
+                                      <span className="text-2xs text-slate-400 block mb-1">Extracted Skills:</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {tc.result.skillsFound.slice(0, 6).map((s: string, sIdx: number) => (
+                                          <span
+                                            key={sIdx}
+                                            className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-2xs"
+                                          >
+                                            {s}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {tc.result.missingInformation?.length > 0 && (
+                                    <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-2xs text-rose-300">
+                                      <span className="font-bold block mb-0.5">Missing information:</span>
+                                      <p className="line-clamp-2">{tc.result.missingInformation[0]}</p>
+                                    </div>
+                                  )}
+
+                                  <div className="pt-1 flex items-center justify-between border-t border-dark-border/40">
+                                    <span className="text-2xs text-slate-400">Deep credential breakdown available</span>
+                                    <button
+                                      onClick={() => navigate('/cv-assistant')}
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-2xs flex items-center gap-1 transition"
+                                    >
+                                      <span>Open CV Assistant</span>
+                                      <ArrowRight className="w-3 h-3" />
+                                    </button>
                                   </div>
-                                )}
-
-                                <div className="pt-1 flex items-center justify-between border-t border-dark-border/40">
-                                  <span className="text-[10px] text-slate-400">Deep credential breakdown available</span>
-                                  <button
-                                    onClick={() => navigate('/cv-assistant')}
-                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center gap-1 transition"
-                                  >
-                                    <span>Open CV Assistant</span>
-                                    <ArrowRight className="w-3 h-3" />
-                                  </button>
                                 </div>
-                              </div>
-                            )}
+                              )}
 
                             {/* 5. SOP Review Structured Card */}
                             {tc.toolName === 'reviewSOPDraft' && tc.result?.alignmentScore !== undefined && (
@@ -664,24 +665,24 @@ export const AIAssistantPage: React.FC = () => {
                                 </div>
 
                                 {tc.result.keyStrengths?.length > 0 && (
-                                  <div className="text-[11px] text-emerald-300/90 space-y-0.5">
-                                    <span className="font-semibold block text-emerald-400">✓ Key Strength:</span>
+                                  <div className="text-2xs text-emerald-300/90 space-y-0.5">
+                                    <span className="font-semibold block text-emerald-400">Key strength:</span>
                                     <p className="line-clamp-1">{tc.result.keyStrengths[0]}</p>
                                   </div>
                                 )}
 
                                 {tc.result.missingInformation?.length > 0 && (
-                                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
-                                    <span className="font-bold block mb-0.5">⚠️ Missing Points:</span>
+                                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-2xs text-amber-300">
+                                    <span className="font-bold block mb-0.5">Missing points:</span>
                                     <p className="line-clamp-2">{tc.result.missingInformation[0]}</p>
                                   </div>
                                 )}
 
                                 <div className="pt-1 flex items-center justify-between border-t border-dark-border/40">
-                                  <span className="text-[10px] text-slate-400">Interactive drafting & polish</span>
+                                  <span className="text-2xs text-slate-400">Interactive drafting & polish</span>
                                   <button
                                     onClick={() => navigate('/sop-assistant')}
-                                    className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] flex items-center gap-1 transition"
+                                    className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-2xs flex items-center gap-1 transition"
                                   >
                                     <span>Open SOP Assistant</span>
                                     <ArrowRight className="w-3 h-3" />
@@ -700,15 +701,16 @@ export const AIAssistantPage: React.FC = () => {
                                   </span>
                                   <button
                                     onClick={() => navigate('/sop-assistant')}
-                                    className="text-cyan-300 hover:text-white font-semibold text-[10px] flex items-center gap-0.5"
+                                    className="text-cyan-300 hover:text-white font-semibold text-2xs flex items-center gap-0.5"
                                   >
                                     Open Editor <ArrowRight className="w-2.5 h-2.5" />
                                   </button>
                                 </div>
-                                <div className="space-y-1 text-[11px] text-slate-300">
+                                <div className="space-y-1 text-2xs text-slate-300">
                                   {tc.result.outline.slice(0, 3).map((sec: any, sIdx: number) => (
                                     <div key={sIdx} className="truncate">
-                                      <span className="text-indigo-400 font-bold">P{sec.paragraphNumber}:</span> {sec.sectionTitle}
+                                      <span className="text-indigo-400 font-bold">P{sec.paragraphNumber}:</span>{' '}
+                                      {sec.sectionTitle}
                                     </div>
                                   ))}
                                 </div>
@@ -723,12 +725,14 @@ export const AIAssistantPage: React.FC = () => {
                                     <Wand2 className="w-4 h-4 text-purple-400" />
                                     <span>Polished Academic Section</span>
                                   </span>
-                                  <span className="text-[10px] text-emerald-400 font-semibold">Strict Facts Preserved</span>
+                                  <span className="text-2xs text-emerald-400 font-semibold">
+                                    Strict Facts Preserved
+                                  </span>
                                 </div>
-                                <div className="p-2.5 rounded-xl bg-dark-bg text-[11px] text-slate-200 leading-relaxed max-h-28 overflow-y-auto">
+                                <div className="p-2.5 rounded-xl bg-dark-bg text-2xs text-slate-200 leading-relaxed max-h-28 overflow-y-auto">
                                   {tc.result.refinedText}
                                 </div>
-                                <p className="text-[10px] text-slate-400">{tc.result.changesExplanation}</p>
+                                <p className="text-2xs text-slate-400">{tc.result.changesExplanation}</p>
                               </div>
                             )}
                           </div>
@@ -741,7 +745,7 @@ export const AIAssistantPage: React.FC = () => {
                   <div
                     className={`p-4 rounded-3xl leading-relaxed break-words ${
                       isUser
-                        ? 'bg-gradient-to-r from-brand-600 to-brand-500 text-white rounded-tr-none shadow-lg whitespace-pre-wrap'
+                        ? 'bg-brand-600 text-white rounded-tr-none shadow-lg whitespace-pre-wrap'
                         : 'bg-dark-card border border-dark-border text-slate-100 rounded-tl-none shadow-md'
                     }`}
                   >
@@ -752,8 +756,8 @@ export const AIAssistantPage: React.FC = () => {
 
                   {/* Message Footnote / Copy Button */}
                   {!isUser && (
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500 px-1">
-                      <span>AI Scholarship Copilot</span>
+                    <div className="flex items-center gap-2 text-2xs text-slate-500 px-1">
+                      <span>ScholarAI assistant</span>
                       <span>•</span>
                       <button
                         onClick={() => handleCopy(m.content, idx)}
@@ -776,7 +780,7 @@ export const AIAssistantPage: React.FC = () => {
                 <Bot className="w-5 h-5 animate-pulse text-brand-400" />
               </div>
               <div className="p-4 rounded-3xl rounded-tl-none bg-dark-card border border-dark-border text-slate-300 text-xs flex items-center gap-3 shadow-md">
-                <Sparkles className="w-4 h-4 text-cyan-400 animate-spin" />
+                <Loader2 className="w-4 h-4 text-brand-400 animate-spin" aria-hidden="true" />
                 <span className="animate-pulse">
                   {toolExecutingStatus || 'Orchestrating AI tools & querying database...'}
                 </span>
@@ -793,7 +797,7 @@ export const AIAssistantPage: React.FC = () => {
               </div>
               <button
                 onClick={() => handleSend()}
-                className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500 hover:text-white text-rose-200 text-[11px] font-semibold transition"
+                className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500 hover:text-white text-rose-200 text-2xs font-semibold transition"
               >
                 Retry
               </button>
@@ -831,7 +835,7 @@ export const AIAssistantPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="p-3 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 disabled:opacity-50 text-white transition shadow-lg shadow-brand-500/20 shrink-0"
+            className="p-3 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 disabled:opacity-50 text-white transition shrink-0"
             title="Send Message"
           >
             <Send className="w-4 h-4" />

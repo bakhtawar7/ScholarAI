@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api, ApiError } from '../services/api';
 import { InlineError } from '../components/common/States';
 import { useAuth } from '../context/AuthContext';
-import { UserCheck, Sparkles, Save, GraduationCap, Globe, BookOpen, Award } from 'lucide-react';
+import { UserCheck, Save, GraduationCap, Globe, BookOpen, Award } from 'lucide-react';
 
 /**
  * Renders a profile list column as a comma-separated string.
@@ -50,7 +50,8 @@ export const ProfilePage: React.FC = () => {
     scholarshipPreference: 'Merit-Based International Scholarships',
     skillsStr: 'Python, TypeScript, Machine Learning, React, Node.js, PyTorch',
     workExperienceYears: '1.5',
-    researchExperience: 'Co-authored a paper on Transformer Optimization for Edge Devices presented at IEEE student symposium.',
+    researchExperience:
+      'Co-authored a paper on Transformer Optimization for Edge Devices presented at IEEE student symposium.',
   });
 
   useEffect(() => {
@@ -156,8 +157,14 @@ export const ProfilePage: React.FC = () => {
         maxGpa: formData.maxGpa,
         graduationYear: formData.graduationYear,
         targetDegreeLevel: formData.targetDegreeLevel,
-        targetCountries: formData.targetCountriesStr.split(',').map((s) => s.trim()).filter(Boolean),
-        preferredFields: formData.preferredFieldsStr.split(',').map((s) => s.trim()).filter(Boolean),
+        targetCountries: formData.targetCountriesStr
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        preferredFields: formData.preferredFieldsStr
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
         languageTests: Object.fromEntries(
           [
             ['IELTS', formData.ieltsScore ? parseFloat(formData.ieltsScore) : null],
@@ -166,7 +173,10 @@ export const ProfilePage: React.FC = () => {
         ),
         financialPreference: formData.financialPreference,
         scholarshipPreference: formData.scholarshipPreference,
-        skills: formData.skillsStr.split(',').map((s) => s.trim()).filter(Boolean),
+        skills: formData.skillsStr
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
         workExperienceYears: formData.workExperienceYears,
         researchExperience: formData.researchExperience,
       };
@@ -201,7 +211,8 @@ export const ProfilePage: React.FC = () => {
           <span>Academic Profile & Preferences</span>
         </h1>
         <p className="text-xs text-slate-400 mt-1">
-          Keep your academic parameters up to date. The AI Matching Engine uses this profile to compute compatibility scores.
+          Keep your academic parameters up to date. The AI Matching Engine uses this profile to compute compatibility
+          scores.
         </p>
       </div>
 
@@ -281,9 +292,10 @@ export const ProfilePage: React.FC = () => {
               already normalises (gpa / maxGpa) against each scholarship's own scale — so
               85/100 and 3.4/4.0 compare correctly. */}
           {isSchoolLeaver && (
-            <p className="p-3 rounded-xl bg-brand-900/40 border border-brand-500/30 text-brand-200 text-[11px] leading-relaxed">
-              Applying straight from school or college? Choose <strong>Percentage</strong> as your grading scale and enter
-              your intermediate / grade&nbsp;12 marks — for example <strong>85</strong> out of <strong>100</strong>.
+            <p className="p-3 rounded-xl bg-brand-900/40 border border-brand-500/30 text-brand-200 text-2xs leading-relaxed">
+              Applying straight from school or college? Choose <strong>Percentage</strong> as your grading scale and
+              enter your intermediate / grade&nbsp;12 marks — for example <strong>85</strong> out of{' '}
+              <strong>100</strong>.
             </p>
           )}
 
@@ -366,7 +378,7 @@ export const ProfilePage: React.FC = () => {
                 placeholder={isPercentageScale ? '85' : '3.65'}
                 className="w-full bg-dark-card border border-dark-border rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-brand-500"
               />
-              <p id="gpa-hint" className="text-[10px] text-slate-500 mt-1">
+              <p id="gpa-hint" className="text-2xs text-slate-500 mt-1">
                 out of {formData.maxGpa || '4.0'}
               </p>
             </div>
@@ -487,7 +499,7 @@ export const ProfilePage: React.FC = () => {
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold shadow-xl shadow-brand-500/25 flex items-center gap-2 transition"
+          className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold flex items-center gap-2 transition"
         >
           <Save className="w-4 h-4" />
           <span>{loading ? 'Saving & Re-matching...' : 'Save & Trigger AI Matching'}</span>

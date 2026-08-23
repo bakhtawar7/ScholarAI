@@ -7,6 +7,8 @@ import { LoadingState } from './components/common/States';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AIAssistantPage } from './pages/AIAssistantPage';
 import { ScholarshipsPage } from './pages/ScholarshipsPage';
@@ -85,9 +87,7 @@ const NotFoundPage: React.FC = () => (
     <div className="max-w-md w-full glass-card rounded-3xl border border-dark-border p-8 text-center space-y-4">
       <p className="text-5xl font-extrabold text-brand-400">404</p>
       <h1 className="text-lg font-bold text-white">Page not found</h1>
-      <p className="text-xs text-slate-400">
-        That page does not exist or may have moved.
-      </p>
+      <p className="text-xs text-slate-400">That page does not exist or may have moved.</p>
       <Link
         to="/dashboard"
         className="inline-block px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition"
@@ -130,6 +130,18 @@ export const App: React.FC = () => (
               </PublicOnlyRoute>
             }
           />
+          <Route
+            path="/auth/forgot-password"
+            element={
+              <PublicOnlyRoute>
+                <ForgotPasswordPage />
+              </PublicOnlyRoute>
+            }
+          />
+          {/* Reached from an emailed link, so it must stay outside PublicOnlyRoute: a user
+              with a stale session in another tab still needs to be able to complete a
+              reset rather than being bounced to the dashboard. */}
+          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
           {/* Authenticated application shell.
               Declared as a pathless layout route so it no longer competes with the

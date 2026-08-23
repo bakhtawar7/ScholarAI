@@ -1,4 +1,11 @@
-import { Scholarship, ScholarshipSearchResult, ScholarshipFilterFacets, ScholarshipMatch } from '../types';
+import {
+  Scholarship,
+  ScholarshipSearchResult,
+  ScholarshipFilterFacets,
+  ScholarshipMatch,
+  PersonalisedScholarships,
+  CountryDiscoveryResult,
+} from '../types';
 import { captureException } from '../utils/sentry';
 
 /**
@@ -132,6 +139,23 @@ export const api = {
   login: (body: any) => request<any>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   me: () => request<any>('/auth/me'),
 
+  // Password recovery & management
+  /** Always resolves with the same generic message, whether or not the address exists. */
+  forgotPassword: (email: string) =>
+    request<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) =>
+    request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    }),
+  /** Returns a fresh token: changing the password invalidates the one in use. */
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string; token: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  logoutAll: () => request<{ message: string }>('/auth/logout-all', { method: 'POST' }),
+
   // Profile
   getProfile: () => request<any>('/profile'),
   updateProfile: (body: any) => request<any>('/profile', { method: 'POST', body: JSON.stringify(body) }),
@@ -139,6 +163,21 @@ export const api = {
   // Scholarships
   searchScholarships: (params: Record<string, any>) =>
     request<ScholarshipSearchResult>(`/scholarships?${toQueryString(params)}`),
+
+  /** The personalised default view: grouped by home country, target countries, elsewhere. */
+  getPersonalisedScholarships: (perSection?: number) =>
+    request<PersonalisedScholarships>(`/scholarships/for-me${perSection ? `?perSection=${perSection}` : ''}`),
+
+  /**
+   * Runs a live search for one country on demand. Resolves even when every provider is
+   * out of quota — check `usedLiveExternalSearch` rather than assuming success.
+   */
+  discoverScholarshipsForCountry: (body: { country: string; degreeLevel?: string; fieldOfStudy?: string }) =>
+    request<CountryDiscoveryResult>('/scholarships/discover/country', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   getScholarship: (id: string) => request<Scholarship>(`/scholarships/${id}`),
   getScholarshipFilters: () => request<ScholarshipFilterFacets>('/scholarships/filters'),
 
@@ -204,7 +243,8 @@ export const api = {
   getSOPQuestions: (targetScholarshipTitle?: string, fieldOfStudy?: string) =>
     request<any>(`/documents/sop/questions?${toQueryString({ targetScholarshipTitle, fieldOfStudy })}`),
   getSOPOutline: (body: any) => request<any>('/documents/sop/outline', { method: 'POST', body: JSON.stringify(body) }),
-  refineSOPSection: (body: any) => request<any>('/documents/sop/refine', { method: 'POST', body: JSON.stringify(body) }),
+  refineSOPSection: (body: any) =>
+    request<any>('/documents/sop/refine', { method: 'POST', body: JSON.stringify(body) }),
   saveSOPSession: (body: { targetScholarship: string; draftText: string; sessionId?: string }) =>
     request<any>('/documents/sop/sessions', { method: 'POST', body: JSON.stringify(body) }),
   getSOPSessions: () => request<any>('/documents/sop/sessions'),

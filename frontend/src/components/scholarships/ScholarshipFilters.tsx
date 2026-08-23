@@ -1,15 +1,12 @@
 import React from 'react';
 import { ScholarshipFilterFacets } from '../../types';
 import {
-  Filter,
   RotateCcw,
   Search,
   Globe,
   GraduationCap,
   DollarSign,
   Calendar,
-  ShieldCheck,
-  CheckCircle,
   SlidersHorizontal,
   X,
   BookOpen,
@@ -59,9 +56,20 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
   ].filter(Boolean).length;
 
   return (
-    <div className="space-y-4">
+    /**
+     * `loading` was accepted as a prop and then ignored, so the panel gave no indication
+     * that a search was in flight — changing a filter looked like nothing had happened
+     * until the results swapped underneath. aria-busy announces it to assistive tech; the
+     * dimming is the visual counterpart. Controls stay interactive on purpose so a filter
+     * change is never swallowed mid-request.
+     */
+    <div className="space-y-4" aria-busy={loading}>
       {/* Top Search and Sort Bar */}
-      <div className="p-4 rounded-2xl glass-panel border border-dark-border shadow-lg space-y-3">
+      <div
+        className={`p-4 rounded-2xl glass-panel border border-dark-border shadow-lg space-y-3 transition-opacity ${
+          loading ? 'opacity-60' : 'opacity-100'
+        }`}
+      >
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           {/* Search Input */}
           <div className="relative flex-1">
@@ -105,7 +113,7 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 pt-3 border-t border-dark-border/40 text-xs">
           {/* Country */}
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+            <label className="text-2xs font-medium text-slate-400 flex items-center gap-1">
               <Globe className="w-3 h-3 text-cyan-400" />
               <span>Country</span>
             </label>
@@ -139,7 +147,7 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
 
           {/* Degree Level */}
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+            <label className="text-2xs font-medium text-slate-400 flex items-center gap-1">
               <GraduationCap className="w-3 h-3 text-brand-400" />
               <span>Degree Level</span>
             </label>
@@ -158,7 +166,7 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
 
           {/* Field of Study */}
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+            <label className="text-2xs font-medium text-slate-400 flex items-center gap-1">
               <BookOpen className="w-3 h-3 text-indigo-400" />
               <span>Field of Study</span>
             </label>
@@ -181,7 +189,7 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
 
           {/* Funding Type */}
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+            <label className="text-2xs font-medium text-slate-400 flex items-center gap-1">
               <DollarSign className="w-3 h-3 text-emerald-400" />
               <span>Funding Type</span>
             </label>
@@ -200,7 +208,7 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
 
           {/* Deadline Presets */}
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+            <label className="text-2xs font-medium text-slate-400 flex items-center gap-1">
               <Calendar className="w-3 h-3 text-rose-400" />
               <span>Deadline</span>
             </label>
@@ -219,7 +227,7 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
 
           {/* Min GPA */}
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+            <label className="text-2xs font-medium text-slate-400 flex items-center gap-1">
               <SlidersHorizontal className="w-3 h-3 text-amber-400" />
               <span>Max Min GPA</span>
             </label>
@@ -245,40 +253,50 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
             </span>
 
             {activeFilterCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">
+              <span className="px-2 py-0.5 rounded-full text-2xs font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">
                 {activeFilterCount} active filter{activeFilterCount > 1 ? 's' : ''}
               </span>
             )}
 
             {/* Individual active chips */}
             {filters.country && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-[10px] text-cyan-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-2xs text-cyan-300">
                 <span>{filters.country}</span>
-                <button onClick={() => onChange({ country: '' })} className="hover:text-white"><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => onChange({ country: '' })} className="hover:text-white">
+                  <X className="w-2.5 h-2.5" />
+                </button>
               </span>
             )}
             {filters.degreeLevel && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-[10px] text-brand-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-2xs text-brand-300">
                 <span>{filters.degreeLevel}</span>
-                <button onClick={() => onChange({ degreeLevel: '' })} className="hover:text-white"><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => onChange({ degreeLevel: '' })} className="hover:text-white">
+                  <X className="w-2.5 h-2.5" />
+                </button>
               </span>
             )}
             {filters.field && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-[10px] text-indigo-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-2xs text-indigo-300">
                 <span>{filters.field}</span>
-                <button onClick={() => onChange({ field: '' })} className="hover:text-white"><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => onChange({ field: '' })} className="hover:text-white">
+                  <X className="w-2.5 h-2.5" />
+                </button>
               </span>
             )}
             {filters.fundingType && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-[10px] text-emerald-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-2xs text-emerald-300">
                 <span>{filters.fundingType.replace('_', ' ')}</span>
-                <button onClick={() => onChange({ fundingType: '' })} className="hover:text-white"><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => onChange({ fundingType: '' })} className="hover:text-white">
+                  <X className="w-2.5 h-2.5" />
+                </button>
               </span>
             )}
             {filters.deadline && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-[10px] text-rose-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-dark-card border border-dark-border text-2xs text-rose-300">
                 <span>{filters.deadline.replace('_', ' ')}</span>
-                <button onClick={() => onChange({ deadline: '' })} className="hover:text-white"><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => onChange({ deadline: '' })} className="hover:text-white">
+                  <X className="w-2.5 h-2.5" />
+                </button>
               </span>
             )}
           </div>
@@ -286,7 +304,7 @@ export const ScholarshipFilters: React.FC<ScholarshipFiltersProps> = ({
           {activeFilterCount > 0 && (
             <button
               onClick={onReset}
-              className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-brand-300 transition underline underline-offset-2"
+              className="inline-flex items-center gap-1 text-2xs text-slate-400 hover:text-brand-300 transition underline underline-offset-2"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Reset all filters</span>

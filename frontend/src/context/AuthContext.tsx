@@ -68,8 +68,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user,
       token,
       loading,
-      // Mirrors the backend's requireAdmin check; the server remains the real gate.
-      isAdmin: user?.role === 'ADMIN',
+      /**
+       * Prefer the server's computed flag. Admin can also be granted through
+       * ADMIN_EMAILS, which `role` alone does not reflect — checking only the role hid
+       * the admin navigation from operators the API already treated as administrators.
+       * The `role` comparison remains as a fallback for a response predating the field.
+       */
+      isAdmin: user?.isAdmin ?? user?.role === 'ADMIN',
       login,
       logout: clearSession,
       refreshUser,

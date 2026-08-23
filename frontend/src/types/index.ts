@@ -4,9 +4,17 @@ export type DegreeLevel = 'HIGH_SCHOOL' | 'BACHELORS' | 'MASTERS' | 'PHD' | 'POS
 
 export type FundingType = 'FULL_FUNDING' | 'PARTIAL_FUNDING' | 'TUITION_ONLY' | 'STIPEND_ONLY' | 'TRAVEL_GRANT';
 
-export type VerificationStatus = 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'NEEDS_REVIEW' | 'REJECTED' | 'PENDING_VERIFICATION' | 'UNVERIFIED' | 'DEPRECATED';
+export type VerificationStatus =
+  | 'VERIFIED'
+  | 'PARTIALLY_VERIFIED'
+  | 'NEEDS_REVIEW'
+  | 'REJECTED'
+  | 'PENDING_VERIFICATION'
+  | 'UNVERIFIED'
+  | 'DEPRECATED';
 
-export type ApplicationStatus = 'INTERESTED' | 'PREPARING' | 'READY_TO_APPLY' | 'APPLIED' | 'INTERVIEW' | 'ACCEPTED' | 'REJECTED';
+export type ApplicationStatus =
+  'INTERESTED' | 'PREPARING' | 'READY_TO_APPLY' | 'APPLIED' | 'INTERVIEW' | 'ACCEPTED' | 'REJECTED';
 
 export interface FieldAudit {
   field: string;
@@ -60,6 +68,12 @@ export interface User {
   id: string;
   email: string;
   role: Role;
+  /**
+   * Computed server-side. Admin can be granted either by role or by listing the address
+   * in ADMIN_EMAILS, so `role === 'ADMIN'` is not a complete test — reading this field
+   * keeps the UI's idea of admin identical to the API's.
+   */
+  isAdmin?: boolean;
   profile?: StudentProfile;
 }
 
@@ -171,6 +185,39 @@ export interface ScholarshipSearchResult {
   totalPages: number;
   items: Scholarship[];
   availableFilters?: ScholarshipFilterFacets;
+}
+
+/** One labelled group on the personalised scholarships view. */
+export interface PersonalisedSection {
+  key: 'home' | 'target' | 'international';
+  title: string;
+  subtitle: string;
+  countries: string[];
+  items: Scholarship[];
+  total: number;
+  /** True when the section is empty and a country-scoped live search could populate it. */
+  discoverable: boolean;
+}
+
+export interface PersonalisedScholarships {
+  profileComplete: boolean;
+  homeCountry: string | null;
+  targetCountries: string[];
+  sections: PersonalisedSection[];
+  /** Actionable gaps in the profile, already phrased for the user. */
+  notices: string[];
+}
+
+export interface CountryDiscoveryResult {
+  country: string;
+  /** False when every search provider was unavailable — the honest signal, not an error. */
+  usedLiveExternalSearch: boolean;
+  searchProvider: string;
+  created: number;
+  updated: number;
+  rejected: number;
+  notices: string[];
+  count: number;
 }
 
 export interface ApplicationChecklist {

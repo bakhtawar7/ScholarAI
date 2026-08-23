@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { api, ApiError } from '../services/api';
-import { Scholarship, ScholarshipFilterFacets } from '../types';
+import { Scholarship, ScholarshipFilterFacets, PersonalisedScholarships } from '../types';
 import { ScholarshipCard } from '../components/scholarships/ScholarshipCard';
 import { ScholarshipFilters, FilterState } from '../components/scholarships/ScholarshipFilters';
+import { PersonalisedScholarshipsView } from '../components/scholarships/PersonalisedScholarshipsView';
 import { ErrorState, EmptyState, InlineError, SkeletonCard } from '../components/common/States';
 import { GraduationCap, ChevronLeft, ChevronRight, Info, SearchX, Bookmark } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const INITIAL_FILTERS: FilterState = {
   q: '',
@@ -20,6 +22,20 @@ const INITIAL_FILTERS: FilterState = {
   verificationStatus: '',
   sortBy: 'match',
 };
+
+/**
+ * True once the visitor has actually narrowed something.
+ *
+ * Drives the switch between the two modes below: the grouped personalised view is the
+ * default, but grouping by country is meaningless once a country filter or a keyword is
+ * in play, so any deliberate narrowing falls back to the flat, paginated result list.
+ * `sortBy` is excluded — re-sorting is not narrowing.
+ */
+function hasActiveFilters(filters: FilterState): boolean {
+  return (Object.keys(filters) as Array<keyof FilterState>).some(
+    (key) => key !== 'sortBy' && filters[key] !== INITIAL_FILTERS[key]
+  );
+}
 
 /**
  * Builds a windowed page list with ellipses.
@@ -44,6 +60,7 @@ function buildPageWindow(current: number, total: number): Array<number | 'gap'> 
 export const ScholarshipsPage: React.FC = () => {
   const location = useLocation();
   const isSavedView = location.pathname === '/saved';
+  const { user } = useAuth();
 
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
   const [facets, setFacets] = useState<ScholarshipFilterFacets | undefined>(undefined);
@@ -56,6 +73,41 @@ export const ScholarshipsPage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  const [personalised, setPersonalised] = useState<PersonalisedScholarships | null>(null);
+
+  const filtersActive = useMemo(() => hasActiveFilters(filters), [filters]);
+
+  /**
+   * Grouped view only for a signed-in visitor browsing without filters. Anonymous
+   * browsing is supported on this route, and there is no profile to group against.
+   */
+  const useSections = !isSavedView && !filtersActive && Boolean(user);
+
+  /** Facets come from the search endpoint, so fetch them once even in grouped mode. */
+  const fetchFacets = useCallback(async () => {
+    if (facets) return;
+    try {
+      setFacets(await api.getScholarshipFilters());
+    } catch {
+      // Filters degrade to their static fallback lists; not worth surfacing.
+    }
+  }, [facets]);
+
+  const fetchPersonalised = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await api.getPersonalisedScholarships(6);
+      setPersonalised(res);
+      setTotal(res.sections.reduce((sum, s) => sum + s.total, 0));
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Could not load your scholarship matches.');
+      setPersonalised(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const fetchScholarships = useCallback(async () => {
     setLoading(true);
@@ -88,8 +140,13 @@ export const ScholarshipsPage: React.FC = () => {
   }, [filters, page, limit, isSavedView]);
 
   useEffect(() => {
-    void fetchScholarships();
-  }, [fetchScholarships]);
+    if (useSections) {
+      void fetchFacets();
+      void fetchPersonalised();
+    } else {
+      void fetchScholarships();
+    }
+  }, [useSections, fetchPersonalised, fetchScholarships, fetchFacets]);
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -101,10 +158,38 @@ export const ScholarshipsPage: React.FC = () => {
     setPage(1);
   };
 
+  /**
+   * "View all" on a section hands its countries to the flat list.
+   * Only a single country can be expressed by the country filter, so a multi-country
+   * section falls back to clearing the country filter and sorting by match — the closest
+   * honest equivalent rather than silently showing one of the countries.
+   */
+  const handleBrowseCountries = (countries: string[]) => {
+    setFilters({ ...INITIAL_FILTERS, country: countries.length === 1 ? countries[0] : '', sortBy: 'match' });
+    setPage(1);
+  };
+
   const handleToggleSave = async (e: React.MouseEvent, s: Scholarship) => {
     e.stopPropagation();
     setSavingId(s.id);
     setActionError(null);
+
+    /** Cards render from either the flat list or the grouped sections, so both are patched. */
+    const setSavedEverywhere = (id: string, isSaved: boolean) => {
+      setScholarships((prev) => prev.map((item) => (item.id === id ? { ...item, isSaved } : item)));
+      setPersonalised((prev) =>
+        prev
+          ? {
+              ...prev,
+              sections: prev.sections.map((sec) => ({
+                ...sec,
+                items: sec.items.map((item) => (item.id === id ? { ...item, isSaved } : item)),
+              })),
+            }
+          : prev
+      );
+    };
+
     try {
       if (s.isSaved) {
         await api.removeSaved(s.id);
@@ -113,11 +198,11 @@ export const ScholarshipsPage: React.FC = () => {
           setScholarships((prev) => prev.filter((item) => item.id !== s.id));
           setTotal((t) => Math.max(0, t - 1));
         } else {
-          setScholarships((prev) => prev.map((item) => (item.id === s.id ? { ...item, isSaved: false } : item)));
+          setSavedEverywhere(s.id, false);
         }
       } else {
         await api.saveScholarship(s.id);
-        setScholarships((prev) => prev.map((item) => (item.id === s.id ? { ...item, isSaved: true } : item)));
+        setSavedEverywhere(s.id, true);
       }
     } catch (err) {
       setActionError(
@@ -134,31 +219,33 @@ export const ScholarshipsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-brand-500/20 shrink-0">
-              {isSavedView ? (
-                <Bookmark className="w-5 h-5 text-white" aria-hidden="true" />
-              ) : (
-                <GraduationCap className="w-5 h-5 text-white" aria-hidden="true" />
-              )}
-            </span>
-            <span>{isSavedView ? 'Saved Scholarships' : 'Scholarship Explorer'}</span>
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
+            {isSavedView ? (
+              <Bookmark className="w-6 h-6 text-brand-400 shrink-0" aria-hidden="true" />
+            ) : (
+              <GraduationCap className="w-6 h-6 text-brand-400 shrink-0" aria-hidden="true" />
+            )}
+            <span>{isSavedView ? 'Saved scholarships' : 'Scholarships'}</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-sm text-slate-400 mt-1">
             {isSavedView
-              ? 'Your bookmarked international scholarships and target funding opportunities.'
-              : 'Discover verified international scholarships, analyse match compatibility, and track application deadlines.'}
+              ? 'Opportunities you have bookmarked.'
+              : useSections
+                ? 'Ranked against your profile and grouped by where each award is hosted.'
+                : 'Search and filter the full catalogue.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs shrink-0">
-          <Info className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
-          <span>
-            Seeded records are labelled <strong>DEMO DATA</strong>.
-          </span>
-        </div>
+        {!isSavedView && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dark-card border border-dark-border text-slate-400 text-xs shrink-0">
+            <Info className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              Seeded records are labelled <strong className="text-slate-300">DEMO DATA</strong>.
+            </span>
+          </div>
+        )}
       </div>
 
       {!isSavedView && (
@@ -174,19 +261,37 @@ export const ScholarshipsPage: React.FC = () => {
 
       {actionError && <InlineError message={actionError} onDismiss={() => setActionError(null)} />}
 
-      {loading ? (
+      {loadError ? (
+        <ErrorState
+          title="Could not load scholarships"
+          message={loadError}
+          onRetry={() => (useSections ? void fetchPersonalised() : void fetchScholarships())}
+        />
+      ) : useSections ? (
+        /* Grouped, profile-ranked view — the default for a signed-in visitor. */
+        <PersonalisedScholarshipsView
+          data={
+            personalised ?? {
+              profileComplete: false,
+              homeCountry: null,
+              targetCountries: [],
+              sections: [],
+              notices: [],
+            }
+          }
+          loading={loading}
+          onToggleSave={handleToggleSave}
+          savingId={savingId}
+          onRefresh={fetchPersonalised}
+          onBrowseCountries={handleBrowseCountries}
+        />
+      ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" aria-busy="true">
           <span className="sr-only">Loading scholarships…</span>
           {Array.from({ length: 6 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
-      ) : loadError ? (
-        <ErrorState
-          title="Could not load scholarships"
-          message={loadError}
-          onRetry={() => void fetchScholarships()}
-        />
       ) : scholarships.length === 0 ? (
         <EmptyState
           icon={isSavedView ? <Bookmark className="w-6 h-6" /> : <SearchX className="w-6 h-6" />}
@@ -235,8 +340,8 @@ export const ScholarshipsPage: React.FC = () => {
             >
               <p className="text-slate-400 font-medium" aria-live="polite">
                 Showing <strong className="text-white">{rangeStart}</strong> to{' '}
-                <strong className="text-white">{rangeEnd}</strong> of{' '}
-                <strong className="text-white">{total}</strong> opportunities
+                <strong className="text-white">{rangeEnd}</strong> of <strong className="text-white">{total}</strong>{' '}
+                opportunities
               </p>
 
               <div className="flex items-center gap-3 flex-wrap justify-center">
@@ -284,7 +389,7 @@ export const ScholarshipsPage: React.FC = () => {
                         aria-label={`Page ${entry}`}
                         className={`w-7 h-7 rounded-lg text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:outline-none ${
                           page === entry
-                            ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30'
+                            ? 'bg-brand-600 text-white'
                             : 'bg-dark-card border border-dark-border text-slate-400 hover:text-white hover:border-slate-500'
                         }`}
                       >
