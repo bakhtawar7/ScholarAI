@@ -79,16 +79,18 @@ class GeminiGroundingProvider implements WebSearchProvider {
   readonly name = 'gemini-google-search';
 
   get configured() {
-    return Boolean(config.openaiApiKey) && config.llmProvider === 'gemini';
+    // Decoupled from the chat LLM: usable whenever a Gemini search key resolves, so
+    // grounded search still works when the chat model is Groq/OpenAI (see config).
+    return Boolean(config.geminiSearchApiKey);
   }
 
   async search(
     queries: string[],
     options: { limitPerQuery?: number; recencyDays?: number } = {}
   ): Promise<SearchResponse> {
-    const model = config.searchModel || config.openaiModel;
+    const model = config.geminiSearchModel;
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(
-      config.openaiApiKey
+      config.geminiSearchApiKey
     )}`;
 
     const recencyClause = options.recencyDays
@@ -316,10 +318,118 @@ class DuckDuckGoFallbackProvider implements WebSearchProvider {
   }
 }
 
+/**
+ * Groq compound web search.
+ *
+ * Groq's `compound` / `compound-mini` systems run server-side web search autonomously and
+ * return the pages they consulted in `message.executed_tools[].output` as `Title:/URL:/Content:`
+ * blocks, alongside a synthesised `content` summary. This lets the existing Groq chat key power
+ * live discovery with no separate search-vendor signup — the natural replacement for Gemini
+ * grounding when the chat LLM is already Groq. `compound-mini` is the default: the full
+ * `compound` model's larger internal expansion can trip Groq's per-request token ceiling (413).
+ */
+class GroqCompoundProvider implements WebSearchProvider {
+  readonly name = 'groq-compound';
+
+  private get isGroqEndpoint() {
+    return /api\.groq\.com/i.test(config.llmBaseUrl);
+  }
+
+  get configured() {
+    // compound is a Groq-only feature: needs the Groq endpoint + a key, and is opt-in via
+    // SCHOLARSHIP_SEARCH_PROVIDER=groq so it never surprises non-Groq or cost-sensitive setups.
+    return config.searchProvider === 'groq' && this.isGroqEndpoint && Boolean(config.openaiApiKey);
+  }
+
+  async search(
+    queries: string[],
+    options: { limitPerQuery?: number; recencyDays?: number } = {}
+  ): Promise<SearchResponse> {
+    const endpoint = `${config.llmBaseUrl}/chat/completions`;
+    const maxTokens = Number(process.env.GROQ_SEARCH_MAX_TOKENS) || 1024;
+
+    const recencyClause = options.recencyDays
+      ? ` Prioritise pages published or updated in the last ${options.recencyDays} days.`
+      : '';
+
+    // One combined call covering all queries: compound injects a large system prompt, so
+    // issuing one request per query would burn the per-minute token budget for no benefit.
+    const prompt = [
+      'Search the web for currently open scholarship opportunities matching ALL of these searches:',
+      ...queries.map((q, i) => `${i + 1}. ${q}`),
+      '',
+      'Prefer official sources: university admissions pages, government scholarship portals,',
+      'and official programme websites.' + recencyClause,
+      '',
+      'For each scholarship, give its name, awarding provider, host country, degree level,',
+      'funding coverage, application deadline, and the official application URL. Only report',
+      'scholarships you actually found on a real page. Do not invent any.',
+    ].join('\n');
+
+    const json = await postJson(
+      endpoint,
+      {
+        model: config.groqSearchModel,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: maxTokens,
+        temperature: 0.1,
+      },
+      { Authorization: `Bearer ${config.openaiApiKey}` }
+    );
+
+    const message = json?.choices?.[0]?.message || {};
+    const narrative: string = String(message.content || '').trim();
+    const executed: any[] = Array.isArray(message.executed_tools) ? message.executed_tools : [];
+    const combinedOutput = executed.map((t) => String(t?.output || '')).join('\n\n');
+
+    const hits: SearchHit[] = [];
+    const seen = new Set<string>();
+
+    // compound returns each consulted page as a "Title: .. / URL: .. / Content: .." block.
+    const blockRe = /Title:\s*(.*?)\s*[\r\n]+URL:\s*(\S+)[\r\n]+Content:\s*([\s\S]*?)(?=[\r\n]+Title:\s|$)/g;
+    let m: RegExpExecArray | null;
+    while ((m = blockRe.exec(combinedOutput)) !== null) {
+      const url = m[2].trim();
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      hits.push({ title: m[1].trim(), url, snippet: m[3].trim().slice(0, 4000) });
+    }
+
+    // Format-drift safety net: if the block parser matched nothing, salvage any bare URLs so
+    // a real result is never dropped on a parsing miss.
+    if (hits.length === 0) {
+      for (const raw of combinedOutput.match(/https?:\/\/[^\s)\]"']+/g) || []) {
+        const url = raw.replace(/[.,;]+$/, '');
+        if (seen.has(url)) continue;
+        seen.add(url);
+        hits.push({ title: '', url, snippet: '' });
+      }
+    }
+
+    // Attach the model's synthesised prose (names, deadlines, funding, official links) to the
+    // first hit so the extraction stage has full context — mirrors the Gemini grounding provider.
+    if (narrative) {
+      if (hits.length > 0) {
+        hits[0] = { ...hits[0], snippet: `${narrative}\n\n${hits[0].snippet}`.trim() };
+      } else {
+        hits.push({ title: 'Groq compound search summary', url: '', snippet: narrative });
+      }
+    }
+
+    return {
+      hits,
+      queriesIssued: queries,
+      provider: this.name,
+      external: hits.some((h) => Boolean(h.url)),
+    };
+  }
+}
+
 const PROVIDERS: WebSearchProvider[] = [
   new SerperProvider(),
   new TavilyProvider(),
   new BraveProvider(),
+  new GroqCompoundProvider(),
   new GeminiGroundingProvider(),
   new DuckDuckGoFallbackProvider(),
 ];

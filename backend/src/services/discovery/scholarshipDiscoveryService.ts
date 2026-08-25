@@ -291,18 +291,65 @@ const DEGREE_LEVELS = new Set(['HIGH_SCHOOL', 'BACHELORS', 'MASTERS', 'PHD', 'PO
 const FUNDING_TYPES = new Set(['FULL_FUNDING', 'PARTIAL_FUNDING', 'TUITION_ONLY', 'STIPEND_ONLY', 'TRAVEL_GRANT']);
 
 /**
+ * Lenient fallback (strict verification OFF only).
+ *
+ * When the LLM extractor produces nothing structured but the live search DID return real
+ * pages, turn those pages into minimally-structured candidate records so the user sees the
+ * pages a live search actually found instead of an empty result. Nothing is invented: every
+ * field the page did not state is left null and listed in unknownFields; the title/URL come
+ * straight from the search hit. These are flagged synthetic so they are shown UNVERIFIED and
+ * never written to the catalogue.
+ */
+function buildFallbackRecordsFromHits(hits: SearchHit[], intent: ParsedSearchIntent): any[] {
+  const seen = new Set<string>();
+  return hits
+    .filter((h) => h.url && /^https?:\/\//i.test(h.url) && (h.title || '').trim().length >= 6)
+    .filter((h) => (seen.has(h.url) ? false : (seen.add(h.url), true)))
+    .slice(0, MAX_HITS_TO_EXTRACT)
+    .map((h) => ({
+      synthetic: true,
+      title: h.title.trim(),
+      provider: hostOf(h.url).replace(/^www\./, '') || 'Unspecified provider',
+      university: null,
+      hostCountry: intent.hostCountry || 'International',
+      degreeLevels: intent.degreeLevel ? [intent.degreeLevel] : [],
+      fieldsOfStudy: [],
+      fundingType: intent.fundingType || 'PARTIAL_FUNDING',
+      tuitionCoverage: null,
+      stipendAmount: null,
+      minGpa: null,
+      languageRequirements: {},
+      deadline: null,
+      officialUrl: h.url,
+      sourceUrl: h.url,
+      eligibilityDescription: (h.snippet || '').replace(/\s+/g, ' ').trim().slice(0, 500) || null,
+      unknownFields: ['deadline', 'fundingType', 'fieldsOfStudy', 'eligibility', 'requirements'],
+    }));
+}
+
+/**
  * Validates an extracted record.
  *
  * The anti-hallucination gate: officialUrl must be one the search actually returned, so
  * the model cannot fabricate a plausible-looking link.
  */
-function validateExtracted(raw: any, allowedUrls: Set<string>): { ok: boolean; reason?: string; value?: any } {
+function validateExtracted(
+  raw: any,
+  allowedUrls: Set<string>,
+  strict: boolean
+): { ok: boolean; reason?: string; value?: any } {
   const title = String(raw?.title || '').trim();
-  const officialUrl = String(raw?.officialUrl || '').trim();
+  let officialUrl = String(raw?.officialUrl || '').trim();
 
   if (title.length < 6) return { ok: false, reason: 'missing or too-short title' };
-  if (!/^https?:\/\//i.test(officialUrl)) return { ok: false, reason: 'missing or malformed officialUrl' };
-  if (!allowedUrls.has(officialUrl))
+  if (!/^https?:\/\//i.test(officialUrl)) {
+    // Lenient mode: fall back to the page it was found on before giving up.
+    const fallback = String(raw?.sourceUrl || '').trim();
+    if (!strict && /^https?:\/\//i.test(fallback)) officialUrl = fallback;
+    else return { ok: false, reason: 'missing or malformed officialUrl' };
+  }
+  const urlVerified = allowedUrls.has(officialUrl);
+  if (strict && !urlVerified)
     return { ok: false, reason: 'officialUrl was not among the search results (possible fabrication)' };
 
   const degreeLevels = (Array.isArray(raw.degreeLevels) ? raw.degreeLevels : [])
@@ -351,6 +398,10 @@ function validateExtracted(raw: any, allowedUrls: Set<string>): { ok: boolean; r
       unknownFields: (Array.isArray(raw.unknownFields) ? raw.unknownFields : [])
         .map((f: any) => String(f))
         .slice(0, 20),
+      /** True when officialUrl was among the search results (not fabricated). */
+      urlVerified,
+      /** True for lenient fallback candidates synthesised from raw search hits. */
+      synthetic: raw?.synthetic === true,
     },
   };
 }
@@ -453,16 +504,31 @@ export class ScholarshipDiscoveryService {
       });
     }
 
+    const strict = config.discoveryStrictVerification;
     const allowedUrls = new Set(search.hits.map((h) => h.url).filter(Boolean));
-    const extracted = enrichedHits.length > 0 ? await extractScholarships(enrichedHits, intent) : [];
+    let extracted = enrichedHits.length > 0 ? await extractScholarships(enrichedHits, intent) : [];
 
     if (search.hits.length > 0 && extracted.length === 0 && !search.error) {
-      notices.push('The live search returned pages but no concrete scholarship details could be verified from them.');
+      if (!strict) {
+        // Verification relaxed: show the real pages the live search found, as unverified
+        // candidates, rather than returning nothing.
+        extracted = buildFallbackRecordsFromHits(enrichedHits, intent);
+        if (extracted.length > 0) {
+          logger.info('Extraction empty; using lenient fallback candidates from search hits', {
+            candidates: extracted.length,
+          });
+        }
+      }
+      if (extracted.length === 0) {
+        notices.push(
+          'The live search returned pages but no concrete scholarship details could be verified from them.'
+        );
+      }
     }
 
     const validated: any[] = [];
     for (const raw of extracted) {
-      const check = validateExtracted(raw, allowedUrls);
+      const check = validateExtracted(raw, allowedUrls, strict);
       if (!check.ok) {
         result.rejected++;
         logger.warn('Rejected extracted scholarship', { reason: check.reason, title: raw?.title });
@@ -478,25 +544,34 @@ export class ScholarshipDiscoveryService {
     const discovered: DiscoveredScholarship[] = [];
 
     for (const record of validated.slice(0, limit)) {
-      let verificationStatus = 'PENDING_VERIFICATION';
+      // Unverified when the search never confirmed the URL, or the record is a lenient
+      // fallback candidate synthesised from a raw hit rather than an LLM extraction.
+      let verificationStatus = record.urlVerified && !record.synthetic ? 'PENDING_VERIFICATION' : 'UNVERIFIED';
       const urlCheck = await checkUrlReachable(record.officialUrl);
 
       if (!urlCheck.reachable && !urlCheck.inconclusive) {
-        // A dead official link means the opportunity cannot be acted on.
-        result.rejected++;
-        logger.warn('Discarded discovered scholarship with unreachable URL', {
-          title: record.title,
-          url: record.officialUrl,
-        });
-        continue;
+        if (strict) {
+          // A dead official link means the opportunity cannot be acted on.
+          result.rejected++;
+          logger.warn('Discarded discovered scholarship with unreachable URL', {
+            title: record.title,
+            url: record.officialUrl,
+          });
+          continue;
+        }
+        // Lenient: keep it, but make the uncertainty explicit rather than hiding it.
+        verificationStatus = 'UNVERIFIED';
       }
-      if (urlCheck.reachable && !urlCheck.inconclusive) verificationStatus = 'PARTIALLY_VERIFIED';
-      if (record.unknownFields.length > 3) verificationStatus = 'NEEDS_REVIEW';
+      if (urlCheck.reachable && !urlCheck.inconclusive && verificationStatus !== 'UNVERIFIED')
+        verificationStatus = 'PARTIALLY_VERIFIED';
+      if (record.unknownFields.length > 3 && verificationStatus !== 'UNVERIFIED') verificationStatus = 'NEEDS_REVIEW';
 
       let persisted: any = null;
       let isNew = false;
 
-      if (!options.skipPersist) {
+      // Synthetic fallback candidates are unverified search hits, not confirmed records —
+      // show them, but never persist them into the catalogue.
+      if (!options.skipPersist && !record.synthetic) {
         try {
           // Dedupe by (title, provider) — the schema's unique pair — then by URL.
           const existing =
@@ -634,6 +709,16 @@ export class ScholarshipDiscoveryService {
 
     result.usedExternalSearch = search.external && discovered.length > 0;
     if (result.created > 0 || result.updated > 0) ScholarshipService.invalidateFilterFacets();
+
+    // Be explicit when relaxed verification let unconfirmed results through, so the user
+    // knows these still need a manual check rather than treating them as verified.
+    const unverifiedCount = discovered.filter((d) => d.verificationStatus === 'UNVERIFIED').length;
+    if (unverifiedCount > 0) {
+      notices.push(
+        `Showing ${unverifiedCount} live result${unverifiedCount === 1 ? '' : 's'} that could not be fully ` +
+          'auto-verified (strict verification is off). Open each official page to confirm the details before applying.'
+      );
+    }
 
     // ---- Knowledge-base enrichment ----------------------------------------
     // Only tops up when live discovery under-delivered. Clearly labelled so the

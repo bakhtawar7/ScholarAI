@@ -89,6 +89,25 @@ const adminEmails = (process.env.ADMIN_EMAILS || '')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+/** Explicit external-search provider selection (empty = auto-detect the first configured). */
+const searchProvider = (process.env.SCHOLARSHIP_SEARCH_PROVIDER || '').trim().toLowerCase();
+
+/**
+ * Gemini Google-Search grounding key + model, resolved INDEPENDENTLY of the chat LLM so
+ * grounded live discovery keeps working when the chat model is a non-Gemini provider
+ * (e.g. Groq or OpenAI). Resolution order:
+ *   1. explicit GEMINI_SEARCH_API_KEY,
+ *   2. SCHOLARSHIP_SEARCH_API_KEY when SCHOLARSHIP_SEARCH_PROVIDER=gemini,
+ *   3. the chat key — but only when the chat model itself is Gemini (backwards compatible).
+ */
+const geminiSearchApiKey =
+  (process.env.GEMINI_SEARCH_API_KEY || '').trim() ||
+  (searchProvider === 'gemini' ? (process.env.SCHOLARSHIP_SEARCH_API_KEY || '').trim() : '') ||
+  (llmProvider === 'gemini' ? llmApiKey : '');
+const geminiSearchModel =
+  (process.env.GEMINI_SEARCH_MODEL || process.env.SCHOLARSHIP_SEARCH_MODEL || '').trim() ||
+  (llmProvider === 'gemini' ? process.env.LLM_MODEL || process.env.OPENAI_MODEL || defaultModel : 'gemini-2.5-flash');
+
 export const config = {
   nodeEnv,
   isProduction,
@@ -124,11 +143,22 @@ export const config = {
    * 'serper' | 'tavily' | 'brave' use a dedicated search API and require
    * SCHOLARSHIP_SEARCH_API_KEY. Empty means auto-detect the first configured provider.
    */
-  searchProvider: (process.env.SCHOLARSHIP_SEARCH_PROVIDER || '').trim().toLowerCase(),
+  searchProvider,
   searchApiKey: process.env.SCHOLARSHIP_SEARCH_API_KEY || '',
   searchApiUrl: (process.env.SCHOLARSHIP_SEARCH_API_URL || '').trim(),
   /** Model used for grounded search; defaults to the chat model. */
   searchModel: (process.env.SCHOLARSHIP_SEARCH_MODEL || '').trim(),
+  /** Gemini grounding search key/model, decoupled from the chat LLM (see above). */
+  geminiSearchApiKey,
+  geminiSearchModel,
+  /**
+   * Groq compound web-search model, used when SCHOLARSHIP_SEARCH_PROVIDER=groq. Groq's
+   * `compound`/`compound-mini` systems run server-side web search with the existing chat key,
+   * so live discovery needs no separate search-vendor signup. Defaults to `compound-mini`:
+   * the full `compound` model's larger internal expansion can trip Groq's per-request token
+   * ceiling (HTTP 413).
+   */
+  groqSearchModel: (process.env.GROQ_SEARCH_MODEL || '').trim() || 'groq/compound-mini',
   /** External-first discovery. Set false to fall back to knowledge-base-only search. */
   externalDiscoveryEnabled: process.env.EXTERNAL_DISCOVERY_ENABLED !== 'false',
   /**
@@ -144,6 +174,16 @@ export const config = {
   fetchSourcePages: process.env.DISCOVERY_FETCH_PAGES !== 'false',
   /** Max provider pages retrieved per discovery request. */
   discoveryMaxPages: Number(process.env.DISCOVERY_MAX_PAGES) || 5,
+
+  /**
+   * Anti-hallucination gate. When true (default) an extracted scholarship is kept only if
+   * its officialUrl was actually among the search results, and a record with an unreachable
+   * official link is discarded. Set false to relax this: results that could not be fully
+   * auto-verified are surfaced as UNVERIFIED rather than dropped, and when the LLM extracts
+   * nothing structured, the real pages the live search returned are shown as unverified
+   * candidates. Lower precision, higher recall — useful when strict mode shows nothing.
+   */
+  discoveryStrictVerification: process.env.DISCOVERY_STRICT_VERIFICATION !== 'false',
 
   /**
    * Live URL reachability checks during verification. Disable in offline/CI

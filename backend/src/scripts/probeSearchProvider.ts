@@ -18,6 +18,11 @@ async function main() {
     'SCHOLARSHIP_SEARCH_API_KEY :',
     config.searchApiKey ? `set (${config.searchApiKey.length} chars)` : 'NOT SET'
   );
+  console.log(
+    'GEMINI_SEARCH_API_KEY      :',
+    config.geminiSearchApiKey ? `set (${config.geminiSearchApiKey.length} chars)` : 'NOT SET'
+  );
+  console.log('GEMINI_SEARCH_MODEL        :', config.geminiSearchModel);
   console.log('LLM provider / model       :', config.llmProvider, '/', config.openaiModel);
   console.log('Resolved provider          :', describeSearchProvider());
   console.log('Provider object            :', resolveProvider() ? 'resolved' : 'NULL — no live search possible');
