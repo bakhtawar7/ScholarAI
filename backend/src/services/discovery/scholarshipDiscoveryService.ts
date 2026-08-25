@@ -300,7 +300,7 @@ const FUNDING_TYPES = new Set(['FULL_FUNDING', 'PARTIAL_FUNDING', 'TUITION_ONLY'
  * straight from the search hit. These are flagged synthetic so they are shown UNVERIFIED and
  * never written to the catalogue.
  */
-function buildFallbackRecordsFromHits(hits: SearchHit[], intent: ParsedSearchIntent): any[] {
+function buildFallbackRecordsFromHits(hits: SearchHit[], intent: ParsedSearchIntent): Record<string, unknown>[] {
   const seen = new Set<string>();
   return hits
     .filter((h) => h.url && /^https?:\/\//i.test(h.url) && (h.title || '').trim().length >= 6)

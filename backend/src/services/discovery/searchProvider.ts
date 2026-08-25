@@ -379,7 +379,7 @@ class GroqCompoundProvider implements WebSearchProvider {
 
     const message = json?.choices?.[0]?.message || {};
     const narrative: string = String(message.content || '').trim();
-    const executed: any[] = Array.isArray(message.executed_tools) ? message.executed_tools : [];
+    const executed: Array<{ output?: string }> = Array.isArray(message.executed_tools) ? message.executed_tools : [];
     const combinedOutput = executed.map((t) => String(t?.output || '')).join('\n\n');
 
     const hits: SearchHit[] = [];
